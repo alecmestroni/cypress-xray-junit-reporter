@@ -1,34 +1,32 @@
 'use strict';
 
-var xml = require('xml');
-var Base = require('mocha').reporters.Base;
-var fs = require('fs');
-var path = require('path');
-var debug = require('debug')('mocha-junit-reporter');
-var mkdirp = require('mkdirp');
-var md5 = require('md5');
-var stripAnsi = require('strip-ansi');
-const utils = require('mocha-junit-reporterV2/utils');
-const conf = require('mocha-junit-reporterV2/config');
+const xml = require('xml');
+const { reporters } = require('mocha');
+const { Base } = reporters;
+const fs = require('fs');
+const path = require('path');
+const debug = require('debug')('cypress-xray-junit-reporter');
+const mkdirp = require('mkdirp');
+const md5 = require('md5');
+const stripAnsi = require('strip-ansi');
 
 const testTotals = {
   registered: 0,
   skipped: 0,
 };
-const { log, mapSuites } = utils;
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
-var Date = global.Date;
+const Date = global.Date;
 
-var createStatsCollector;
-var mocha6plus;
+let createStatsCollector;
+let mocha6plus;
 
 try {
-  var json = JSON.parse(
+  const json = JSON.parse(
     fs.readFileSync(path.dirname(require.resolve('mocha')) + "/package.json", "utf8")
   );
-  var version = json.version;
+  const version = json.version;
   if (version >= "6") {
     createStatsCollector = require("mocha/lib/stats-collector");
     mocha6plus = true;
@@ -43,7 +41,7 @@ module.exports = MochaJUnitReporter;
 
 // A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
 // regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
-var INVALID_CHARACTERS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uD800-\uDFFF\uFDD0-\uFDFF\uFFFF\uC008]/g; //eslint-disable-line no-control-regex
+const INVALID_CHARACTERS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uD800-\uDFFF\uFDD0-\uFDFF\uFFFF\uC008]/g; //eslint-disable-line no-control-regex
 
 function findReporterOptions(options) {
   debug('Checking for options in', options);
@@ -61,7 +59,7 @@ function findReporterOptions(options) {
   }
   // this is require to handle .mocharc.js files
   debug('Looking for .mocharc.js options');
-  return Object.keys(options).filter(function (key) { return key.indexOf('reporterOptions.') === 0; })
+  return Object.keys(options).filter(function (key) { return key.startsWith('reporterOptions.'); })
     .reduce(function (reporterOptions, key) {
       reporterOptions[key.substring('reporterOptions.'.length)] = options[key];
       return reporterOptions;
@@ -69,7 +67,7 @@ function findReporterOptions(options) {
 }
 
 function configureDefaults(options) {
-  var config = findReporterOptions(options);
+  const config = findReporterOptions(options);
   debug('options', config);
   config.mochaFile = getSetting(config.mochaFile, 'MOCHA_FILE', 'test-results.xml');
   config.attachments = getSetting(config.attachments, 'ATTACHMENTS', false);
@@ -119,7 +117,7 @@ function updateOptionsForJenkinsMode(options) {
  * 1. If `key` is present in the environment, then use the environment value
  * 2. If `value` is specified, then use that value
  * 3. Fall back to `defaultVal`
- * @module mocha-junit-reporter
+ * @module cypress-xray-junit-reporter
  * @param {Object} value - the value from the reporter options
  * @param {String} key - the environment variable to check
  * @param {Object} defaultVal - the fallback value
@@ -127,7 +125,7 @@ function updateOptionsForJenkinsMode(options) {
  */
 function getSetting(value, key, defaultVal, transform) {
   if (process.env[key] !== undefined) {
-    var envVal = process.env[key];
+    const envVal = process.env[key];
     return (typeof transform === 'function') ? transform(envVal) : envVal;
   }
   if (value !== undefined) {
@@ -144,8 +142,8 @@ function defaultSuiteTitle(suite) {
 }
 
 function fullSuiteTitle(suite) {
-  var parent = suite.parent;
-  var title = [suite.title];
+  let parent = suite.parent;
+  const title = [suite.title];
 
   while (parent) {
     if (parent.root && parent.title === '') {
@@ -167,7 +165,7 @@ function parsePropertiesFromEnv(envValue) {
   if (envValue) {
     debug('Parsing from env', envValue);
     return envValue.split(',').reduce(function (properties, prop) {
-      var property = prop.split(':');
+      const property = prop.split(':');
       properties[property[0]] = property[1];
       return properties;
     }, []);
@@ -176,13 +174,13 @@ function parsePropertiesFromEnv(envValue) {
   return null;
 }
 
-function generateProperties(options) {
-  var props = options.properties;
+function generateSuiteProperties(options) {
+  const props = options.properties;
   if (!props) {
     return [];
   }
   return Object.keys(props).reduce(function (properties, name) {
-    var value = props[name];
+    const value = props[name];
     properties.push({ property: { _attr: { name: name, value: value } } });
     return properties;
   }, []);
@@ -190,8 +188,8 @@ function generateProperties(options) {
 
 function getJenkinsClassname(test, options) {
   debug('Building jenkins classname for', test);
-  var parent = test.parent;
-  var titles = [];
+  let parent = test.parent;
+  const titles = [];
   while (parent) {
     parent.title && titles.unshift(parent.title);
     parent = parent.parent;
@@ -202,33 +200,27 @@ function getJenkinsClassname(test, options) {
   return titles.join(options.suiteTitleSeparatedBy);
 }
 
-function setJiraKey(jiraKey, properties) {
+function addPropertyJiraKey(jiraKey, properties) {
   if (jiraKey.length) {
     properties.push({
       property: { _attr: { name: 'test_key', value: jiraKey } }
     })
   }
 }
-function generateJiraID(test) {
-  let jiraKey
-  const testConfig = test._testConfig.unverifiedTestConfig
-  const errorMsg = "REPORTER OUTDATED CONFIGURATION! \nYou have installed the junit-xray-cypress-reporter v1.0.0, \nwithout update the configuration in this test\nHowever the import will be successful, but see the docs: \nhttps://www.npmjs.com/package/junit-xray-cypress-reporter?activeTab=readme \nto align the module with NEWEST CONFIGURATIONS\n"
-  if (testConfig?.env) {
-    console.error(errorMsg)
-    jiraKey = testConfig?.env.jiraID
-  } else if (testConfig?.xray) {
-    console.error(errorMsg)
-    jiraKey = testConfig?.xray.jiraID
-  } else if (testConfig?.jiraKey) {
-    jiraKey = testConfig?.jiraKey
-  } else if (testConfig?.jiraID) {
-    jiraKey = testConfig?.jiraID
-  } else {
+
+function parseJiraKeyFromConfig(test) {
+  const testConfig = test._testConfig
+  if (!testConfig) {
+    return []
+  }
+  const jiraKey = testConfig['jiraKey'] ? testConfig.jiraKey : testConfig.unverifiedTestConfig?.jiraKey
+  if (!jiraKey) {
     return []
   }
   return jiraKey
 }
-function setScreenshot(screenshot, properties) {
+
+function addPropertyScreenshot(screenshot, properties) {
   if (screenshot) {
     const fileName = screenshot.name
     const base64 = screenshot.base64
@@ -243,6 +235,7 @@ function setScreenshot(screenshot, properties) {
     })
   }
 }
+
 function getErrorMsg(testcase) {
   const failures = testcase.testcase.filter(function (item) {
     if (item.failure) {
@@ -254,7 +247,8 @@ function getErrorMsg(testcase) {
     return message
   }
 }
-function setMessage(message, properties) {
+
+function addPropertyMessage(message, properties) {
   if (message) {
     properties.push({
       property: {
@@ -264,6 +258,7 @@ function setMessage(message, properties) {
     })
   }
 }
+
 function getScreen(test) {
   const path = test.screenshot
   if (path) {
@@ -273,66 +268,66 @@ function getScreen(test) {
     return failureObj
   }
 }
+
+function mapSuites(suite, testTotals) {
+  const suites = suite.suites.reduce((acc, subSuite) => {
+    const mappedSuites = mapSuites(subSuite, testTotals);
+    if (mappedSuites) {
+      acc.push(mappedSuites);
+    }
+    return acc;
+  }, []);
+  const mappedSuite = { ...suite, suites };
+  return mappedSuite;
+}
+
 function getBase64(path) {
-  const fs = require('fs')
   const image = fs.readFileSync(path, { enconding: 'base64' })
   function base64ArrayBuffer(arrayBuffer) {
-    var base64 = ''
-    var encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-
-    var bytes = new Uint8Array(arrayBuffer)
-    var byteLength = bytes.byteLength
-    var byteRemainder = byteLength % 3
-    var mainLength = byteLength - byteRemainder
-
-    var a, b, c, d
-    var chunk
-
+    let base64 = ''
+    const encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const bytes = new Uint8Array(arrayBuffer)
+    const byteLength = bytes.byteLength
+    const byteRemainder = byteLength % 3
+    const mainLength = byteLength - byteRemainder
+    let a, b, c, d
+    let chunk
     // Main loop deals with bytes in chunks of 3
-    for (var i = 0; i < mainLength; i = i + 3) {
+    for (let i = 0; i < mainLength; i = i + 3) {
       // Combine the three bytes into a single integer
       chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2]
-
       // Use bitmasks to extract 6-bit segments from the triplet
       a = (chunk & 16515072) >> 18 // 16515072 = (2^6 - 1) << 18
       b = (chunk & 258048) >> 12 // 258048   = (2^6 - 1) << 12
       c = (chunk & 4032) >> 6 // 4032     = (2^6 - 1) << 6
       d = chunk & 63               // 63       = 2^6 - 1
-
       // Convert the raw binary segments to the appropriate ASCII encoding
       base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d]
     }
-
     // Deal with the remaining bytes and padding
     if (byteRemainder == 1) {
       chunk = bytes[mainLength]
-
       a = (chunk & 252) >> 2 // 252 = (2^6 - 1) << 2
-
       // Set the 4 least significant bits to zero
       b = (chunk & 3) << 4 // 3   = 2^2 - 1
-
       base64 += encodings[a] + encodings[b] + '=='
     } else if (byteRemainder == 2) {
       chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1]
-
       a = (chunk & 64512) >> 10 // 64512 = (2^6 - 1) << 10
       b = (chunk & 1008) >> 4 // 1008  = (2^6 - 1) << 4
-
       // Set the 2 least significant bits to zero
       c = (chunk & 15) << 2 // 15    = 2^4 - 1
-
       base64 += encodings[a] + encodings[b] + encodings[c] + '='
     }
-
     return base64
   }
   return base64ArrayBuffer(image)
 }
 
+
 /**
  * JUnit reporter for mocha.js.
- * @module mocha-junit-reporter
+ * @module cypress-xray-junit-reporter
  * @param {EventEmitter} runner - the test runner
  * @param {Object} options - mocha options
  */
@@ -347,13 +342,17 @@ function MochaJUnitReporter(runner, options) {
   this._runner = runner;
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
   this._antId = 0;
-  this._Date = (options || {}).Date || Date;
+  this._Date = (options?.Date) || Date;
 
-  var testsuites = [];
+  const testsuites = [];
   this._testsuites = testsuites;
 
-  function lastSuite() {
-    return testsuites[testsuites.length - 1].testsuite;
+  function findSuite(testsuiteNum) {
+    if (testsuiteNum === 'last') {
+      return testsuites[testsuites.length - 1].testsuite;
+    } else {
+      return testsuites[testsuiteNum]?.testsuite;
+    }
   }
 
   // get functionality from the Base reporter
@@ -380,26 +379,51 @@ function MochaJUnitReporter(runner, options) {
 
   this._onSuiteEnd = function (suite) {
     if (!isInvalidSuite(suite)) {
-      var testsuite = lastSuite();
+      const testsuite = findSuite('last');
       if (testsuite) {
-        var start = testsuite[0]._attr.timestamp;
+        const start = testsuite[0]._attr.timestamp;
         testsuite[0]._attr.time = this._Date.now() - start;
       }
     }
   };
-  this._runner.on('end', function () {
-    this.config = conf(options);
-    const rootSuite = mapSuites(this.runner.suite, testTotals, this.config);
-    rootSuite.suites.forEach((suite) => {
-      suite.tests.forEach((test) => {
-        const err = test.err
-        lastSuite().push(this.getTestcaseData(test, err))
-      })
-    })
-    this.flush(testsuites);
+  this._runner.on('suite end', function (suite) {
+    // allow tests to mock _onSuiteEnd
+    return this._onSuiteEnd(suite);
   }.bind(this));
 
+  this._runner.on('end', function () {
+    let testsuiteNum = 0
+    const processTests = (tests) => {
+      tests.forEach((test) => {
+        const err = test.err;
+        findSuite(testsuiteNum).push(this.getTestcaseData(test, err));
+      });
+    };
+    const processSuites = (suites) => {
+      suites.forEach((suite) => {
+        testsuiteNum++
+        if (suite.suites.length && !suite.tests.length) {
+          processSuites(suite.suites);
+        } else if (suite.tests.length && !suite.suites.length) {
+          processTests(suite.tests);
+        } else if (suite.suites.length && suite.tests.length) {
+          processSuitesAndTests(suite)
+        } else {
+          throw new Error('Config Error');
+        }
+      });
+    };
+    const processSuitesAndTests = (suite) => {
+      processTests(suite.tests)
+      processSuites(suite.suites);
+    };
 
+
+    const rootSuite = mapSuites(this.runner.suite, testTotals);
+    processSuites(rootSuite.suites)
+
+    this.flush(testsuites);
+  }.bind(this));
 }
 
 /**
@@ -408,21 +432,21 @@ function MochaJUnitReporter(runner, options) {
  * @return {Object}       - an object representing the xml node
  */
 MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
-  var antMode = this._options.antMode;
+  const antMode = this._options.antMode;
 
-  var _attr = {
+  const _attr = {
     name: this._generateSuiteTitle(suite),
     timestamp: this._Date.now(),
     tests: suite.tests.length
   };
-  var testSuite = { testsuite: [{ _attr: _attr }] };
+  const testSuite = { testsuite: [{ _attr: _attr }] };
 
 
   if (suite.file) {
     testSuite.testsuite[0]._attr.file = suite.file;
   }
 
-  var properties = generateProperties(this._options);
+  const properties = generateSuiteProperties(this._options);
   if (properties.length || antMode) {
     testSuite.testsuite.push({
       properties: properties
@@ -447,11 +471,11 @@ MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
  * @returns {object}
  */
 MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
-  var jenkinsMode = this._options.jenkinsMode;
-  var flipClassAndName = this._options.testCaseSwitchClassnameAndName;
-  var name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
-  var classname = stripAnsi(test.title);
-  var testcase = {
+  const jenkinsMode = this._options.jenkinsMode;
+  const flipClassAndName = this._options.testCaseSwitchClassnameAndName;
+  const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
+  const classname = stripAnsi(test.title);
+  const testcase = {
     testcase: [{
       _attr: {
         name: flipClassAndName ? classname : name,
@@ -463,7 +487,7 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
 
   // We need to merge console.logs and attachments into one <system-out> -
   //  see JUnit schema (only accepts 1 <system-out> per test).
-  var systemOutLines = [];
+  let systemOutLines = [];
   if (this._options.outputs && (test.consoleOutputs && test.consoleOutputs.length > 0)) {
     systemOutLines = systemOutLines.concat(test.consoleOutputs);
   }
@@ -483,7 +507,7 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   if (err) {
-    var message;
+    let message;
     if (err.message && typeof err.message.toString === 'function') {
       message = err.message + '';
     } else if (typeof err.inspect === 'function') {
@@ -491,14 +515,14 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
     } else {
       message = '';
     }
-    var failureMessage = err.stack || message;
+    let failureMessage = err.stack || message;
     if (!Base.hideDiff && err.expected !== undefined) {
-      var oldUseColors = Base.useColors;
+      const oldUseColors = Base.useColors;
       Base.useColors = false;
       failureMessage += "\n" + Base.generateDiff(err.actual, err.expected);
       Base.useColors = oldUseColors;
     }
-    var failureElement = {
+    const failureElement = {
       _attr: {
         message: this.removeInvalidCharacters(message) || '',
         type: err.name || ''
@@ -510,15 +534,17 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   let properties = []
-  const jiraKey = generateJiraID(test)
-  setJiraKey(jiraKey, properties)
+  const jiraKey = parseJiraKeyFromConfig(test)
+  addPropertyJiraKey(jiraKey, properties)
   const screenshot = getScreen(test)
-  setScreenshot(screenshot, properties)
+  addPropertyScreenshot(screenshot, properties)
   const errMessage = getErrorMsg(testcase)
-  setMessage(errMessage, properties)
-  testcase.testcase.push({
-    properties,
-  })
+  addPropertyMessage(errMessage, properties)
+  if (properties.length) {
+    testcase.testcase.push({
+      properties,
+    })
+  }
   return testcase;
 };
 
@@ -540,7 +566,7 @@ MochaJUnitReporter.prototype.removeInvalidCharacters = function (input) {
 MochaJUnitReporter.prototype.flush = function (testsuites) {
   this._xml = this.getXml(testsuites);
 
-  var reportFilename = this.formatReportFilename(this._xml, testsuites);
+  const reportFilename = this.formatReportFilename(this._xml, testsuites);
 
   this.writeXmlToDisk(this._xml, reportFilename);
 
@@ -556,50 +582,50 @@ MochaJUnitReporter.prototype.flush = function (testsuites) {
  */
 MochaJUnitReporter.prototype.formatReportFilename = function (xml, testsuites) {
 
-  var reportFilename = this._options.mochaFile;
+  const sanitize = require('sanitize-filename');
+  let reportFilename = this._options.mochaFile;
 
   if (reportFilename.indexOf('[hash]') !== -1) {
     reportFilename = reportFilename.replace('[hash]', md5(xml));
   }
 
   if (reportFilename.indexOf('[testsuitesTitle]') !== -1) {
-    reportFilename = reportFilename.replace('[testsuitesTitle]', this._options.testsuitesTitle);
+    reportFilename = reportFilename.replace('[testsuitesTitle]', sanitize(this._options.testsuitesTitle));
   }
   if (reportFilename.indexOf('[rootSuiteTitle]') !== -1) {
-    reportFilename = reportFilename.replace('[rootSuiteTitle]', this._options.rootSuiteTitle);
+    reportFilename = reportFilename.replace('[rootSuiteTitle]', sanitize(this._options.rootSuiteTitle));
   }
   if (reportFilename.indexOf('[suiteFilename]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteFilename]', testsuites[0]?.testsuite[0]?._attr?.file ?? 'suiteFilename');
+    reportFilename = reportFilename.replace('[suiteFilename]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file ?? 'suiteFilename'));
   }
   if (reportFilename.indexOf('[suiteName]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteName]', testsuites[1]?.testsuite[0]?._attr?.name ?? 'suiteName');
+    reportFilename = reportFilename.replace('[suiteName]', sanitize(testsuites[1]?.testsuite[0]?._attr?.name ?? 'suiteName'));
   }
 
   return reportFilename;
 };
-
 /**
  * Produces an XML string from the given test data.
  * @param {Array.<Object>} testsuites - a list of xml configs
  * @returns {string}
  */
 MochaJUnitReporter.prototype.getXml = function (testsuites) {
-  var totalTests = 0;
-  var stats = this._runner.stats;
-  var antMode = this._options.antMode;
-  var hasProperties = (!!this._options.properties) || antMode;
-  var Date = this._Date;
+  let totalTests = 0;
+  const stats = this._runner.stats;
+  const antMode = this._options.antMode;
+  const hasProperties = (!!this._options.properties) || antMode;
+  const Date = this._Date;
 
   testsuites.forEach(function (suite) {
-    var _suiteAttr = suite.testsuite[0]._attr;
+    const _suiteAttr = suite.testsuite[0]._attr;
     // testsuite is an array: [attrs, properties?, testcase, testcase, …]
     // we want to make sure that we are grabbing test cases at the correct index
-    var _casesIndex = hasProperties ? 2 : 1;
-    var _cases = suite.testsuite.slice(_casesIndex);
-    var missingProps;
+    const _casesIndex = hasProperties ? 2 : 1;
+    const _cases = suite.testsuite.slice(_casesIndex);
+    let missingProps;
 
     // suiteTime has unrounded time as a Number of milliseconds
-    var suiteTime = _suiteAttr.time;
+    const suiteTime = _suiteAttr.time;
 
     _suiteAttr.time = (suiteTime / 1000 || 0).toFixed(3);
     _suiteAttr.timestamp = new Date(_suiteAttr.timestamp).toISOString().slice(0, -5);
@@ -607,7 +633,7 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
     _suiteAttr.skipped = 0;
 
     _cases.forEach(function (testcase) {
-      var lastNode = testcase.testcase[testcase.testcase.length - 1];
+      const lastNode = testcase.testcase[testcase.testcase.length - 1];
 
       _suiteAttr.skipped += Number('skipped' in lastNode);
       _suiteAttr.failures += Number('failure' in lastNode);
@@ -624,7 +650,7 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
         });
       });
       missingProps.forEach(function (prop) {
-        var obj = {};
+        const obj = {};
         obj[prop] = [];
         suite.testsuite.push(obj);
       });
@@ -639,7 +665,7 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
 
 
   if (!antMode) {
-    var rootSuite = {
+    const rootSuite = {
       _attr: {
         name: this._options.testsuitesTitle,
         time: (stats.duration / 1000 || 0).toFixed(3),

@@ -1,54 +1,34 @@
 {
-  "name": "mocha-junit-reporter",
-  "version": "2.2.1",
+  "name": "cypress-xray-junit-reporter",
+  "version": "0.0.9",
   "description": "A JUnit reporter for mocha.",
   "main": "index.js",
-  "scripts": {
-    "ci": "npm run lint && npm run test",
-    "lint": "./node_modules/.bin/eslint '*.js' 'test/**/*.js'",
-    "test": "MOCHA_FILE=test/mocha.xml node_modules/.bin/mocha test --reporter=spec",
-    "tdd": "MOCHA_FILE=test/mocha.xml node_modules/.bin/mocha test --reporter=min --watch"
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/michaelleeallen/mocha-junit-reporter"
+    "url": "https://github.com/alecmestroni/cypress-xray-junit-reporter"
   },
   "keywords": [
     "mocha",
     "junit",
-    "reporter"
+    "reporter",
+    "cypress"
   ],
   "author": {
-    "name": "Michael Allen",
-    "email": "michael.lee.allen@gmail.com"
+    "name": "Alec Mestroni "
   },
   "license": "MIT",
   "devDependencies": {
-    "@sinonjs/fake-timers": "^6.0.1",
-    "chai": "^3.0.0",
-    "chai-xml": "^0.3.0",
-    "eslint": "^7.0.0",
-    "mocha": "^9.1.2",
-    "mocha2": "npm:mocha@2.2.5",
-    "mocha3": "npm:mocha@^3.0.0",
-    "mocha4": "npm:mocha@^4.0.0",
-    "mocha5": "npm:mocha@^5.0.0",
-    "mocha6": "npm:mocha@^6.0.0",
-    "mocha7": "npm:mocha@^7.2.0",
-    "mocha8": "npm:mocha@^8.4.0",
-    "mocha9": "npm:mocha@^9.1.2",
-    "rimraf": "^3.0.2",
-    "test-console": "^1.0.0",
-    "xmllint": "^0.1.1"
-  },
-  "dependencies": {
     "debug": "^4.3.4",
+    "eslint": "^7.0.0",
     "md5": "^2.3.0",
     "mkdirp": "^3.0.0",
+    "mocha9": "npm:mocha@^9.1.2",
+    "rimraf": "^3.0.2",
+    "sanitize-filename": "^1.6.3",
     "strip-ansi": "^6.0.1",
-    "xml": "^1.0.1"
-  },
-  "peerDependencies": {
-    "mocha": ">=2.2.5"
+    "test-console": "^1.0.0",
+    "xml": "^1.0.1",
+    "xmllint": "^0.1.1"
   }
 }

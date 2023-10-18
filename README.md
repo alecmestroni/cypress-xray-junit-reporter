@@ -8,38 +8,45 @@ Produces JUnit-style XML test results.
 ## Installation
 
 ```shell
-$ npm install mocha-junit-reporter --save-dev
+$ npm install cypress-xray-junit-reporter --save-dev
 ```
 
 or as a global module
+
 ```shell
-$ npm install -g mocha-junit-reporter
+$ npm install -g cypress-xray-junit-reporter
 ```
 
 ## Usage
-Run mocha with `mocha-junit-reporter`:
+
+Run mocha with `cypress-xray-junit-reporter`:
 
 ```shell
-$ mocha test --reporter mocha-junit-reporter
+$ mocha test --reporter cypress-xray-junit-reporter
 ```
+
 This will output a results file at `./test-results.xml`.
 You may optionally declare an alternate location for results XML file by setting
 the environment variable `MOCHA_FILE` or specifying `mochaFile` in `reporterOptions`:
 
 ```shell
-$ MOCHA_FILE=./path_to_your/file.xml mocha test --reporter mocha-junit-reporter
+$ MOCHA_FILE=./path_to_your/file.xml mocha test --reporter cypress-xray-junit-reporter
 ```
+
 or
+
 ```shell
-$ mocha test --reporter mocha-junit-reporter --reporter-options mochaFile=./path_to_your/file.xml
+$ mocha test --reporter cypress-xray-junit-reporter --reporter-options mochaFile=./path_to_your/file.xml
 ```
+
 or
+
 ```javascript
 var mocha = new Mocha({
-    reporter: 'mocha-junit-reporter',
-    reporterOptions: {
-        mochaFile: './path_to_your/file.xml'
-    }
+  reporter: "cypress-xray-junit-reporter",
+  reporterOptions: {
+    mochaFile: "./path_to_your/file.xml",
+  },
 });
 ```
 
@@ -61,24 +68,27 @@ You can also add properties to the report under `testsuite`. This is useful if y
 ```
 
 To do so pass them in via env variable:
+
 ```shell
-PROPERTIES=BUILD_ID:4291 mocha test --reporter mocha-junit-reporter
+PROPERTIES=BUILD_ID:4291 mocha test --reporter cypress-xray-junit-reporter
 ```
+
 or
+
 ```javascript
 var mocha = new Mocha({
-    reporter: 'mocha-junit-reporter',
-    reporterOptions: {
-        properties: {
-            BUILD_ID: 4291
-        }
-    }
-})
+  reporter: "cypress-xray-junit-reporter",
+  reporterOptions: {
+    properties: {
+      BUILD_ID: 4291,
+    },
+  },
+});
 ```
 
 ### Results Report
 
-Results XML filename can contain `[hash]`, e.g. `./path_to_your/test-results.[hash].xml`. `[hash]` is replaced by MD5 hash of test results XML. This enables support of parallel execution of multiple `mocha-junit-reporter`'s writing test results in separate files. In addition to this these placeholders can also be used:
+Results XML filename can contain `[hash]`, e.g. `./path_to_your/test-results.[hash].xml`. `[hash]` is replaced by MD5 hash of test results XML. This enables support of parallel execution of multiple `cypress-xray-junit-reporter`'s writing test results in separate files. In addition to this these placeholders can also be used:
 
 | placeholder         | output                                            |
 | ------------------- | ------------------------------------------------- |
@@ -87,15 +97,15 @@ Results XML filename can contain `[hash]`, e.g. `./path_to_your/test-results.[ha
 | `[suiteFilename]`   | will be replaced by the filename of the spec file |
 | `[suiteName]`       | will be replaced by the name the first test suite |
 
-
 In order to display full suite title (including parents) just specify `testsuitesTitle` option
+
 ```javascript
 var mocha = new Mocha({
-    reporter: 'mocha-junit-reporter',
-    reporterOptions: {
-        testsuitesTitle: true,
-        suiteTitleSeparatedBy: '.' // suites separator, default is space (' '), or period ('.') in jenkins mode
-    }
+  reporter: "cypress-xray-junit-reporter",
+  reporterOptions: {
+    testsuitesTitle: true,
+    suiteTitleSeparatedBy: ".", // suites separator, default is space (' '), or period ('.') in jenkins mode
+  },
 });
 ```
 
@@ -103,10 +113,10 @@ If you want to **switch classname and name** of the generated testCase XML entri
 
 ```javascript
 var mocha = new Mocha({
-    reporter: 'mocha-junit-reporter',
-    reporterOptions: {
-        testCaseSwitchClassnameAndName: true
-    }
+  reporter: "cypress-xray-junit-reporter",
+  reporterOptions: {
+    testCaseSwitchClassnameAndName: true,
+  },
 });
 ```
 
@@ -120,14 +130,16 @@ Here is an example of the XML output when using the `testCaseSwitchClassnameAndN
 You can also configure the `testsuites.name` attribute by setting `reporterOptions.testsuitesTitle` and the root suite's `name` attribute by setting `reporterOptions.rootSuiteTitle`.
 
 ### System out and system err
+
 The JUnit format defines a pair of tags - `<system-out/>` and `<system-err/>` - for describing a test's generated output
 and error streams, respectively. It is possible to pass the test outputs/errors as an array of text lines:
+
 ```js
-it ('should report output', function () {
-  this.test.consoleOutputs = [ 'line 1 of output', 'line 2 of output' ];
+it("should report output", function () {
+  this.test.consoleOutputs = ["line 1 of output", "line 2 of output"];
 });
-it ('should report error', function () {
-  this.test.consoleErrors = [ 'line 1 of errors', 'line 2 of errors' ];
+it("should report error", function () {
+  this.test.consoleErrors = ["line 1 of errors", "line 2 of errors"];
 });
 ```
 
@@ -137,30 +149,35 @@ via which the outputs/errors array will be populated.
 
 If capturing only console.log/console.error is an option, a simple (if a bit hack-ish) solution is to replace
 the implementations of these functions globally, like so:
-```js
-var util = require('util');
 
-describe('my console tests', function () {
+```js
+var util = require("util");
+
+describe("my console tests", function () {
   var originalLogFunction = console.log;
   var originalErrorFunction = console.error;
   beforeEach(function _mockConsoleFunctions() {
     var currentTest = this.currentTest;
     console.log = function captureLog() {
       var formattedMessage = util.format.apply(util, arguments);
-      currentTest.consoleOutputs = (currentTest.consoleOutputs || []).concat(formattedMessage);
+      currentTest.consoleOutputs = (currentTest.consoleOutputs || []).concat(
+        formattedMessage
+      );
     };
     console.error = function captureError() {
       var formattedMessage = util.format.apply(util, arguments);
-      currentTest.consoleErrors = (currentTest.consoleErrors || []).concat(formattedMessage);
+      currentTest.consoleErrors = (currentTest.consoleErrors || []).concat(
+        formattedMessage
+      );
     };
   });
   afterEach(function _restoreConsoleFunctions() {
     console.log = originalLogFunction;
     console.error = originalErrorFunction;
   });
-  it('should output something to the console', function() {
+  it("should output something to the console", function () {
     // This should end up in <system-out>:
-    console.log('hello, %s', 'world');
+    console.log("hello, %s", "world");
   });
 });
 ```
@@ -168,17 +185,20 @@ describe('my console tests', function () {
 Remember to run with `--reporter-options outputs=true` if you want test outputs in XML.
 
 ### Attachments
+
 enabling the `attachments` configuration option will allow for attaching files and screenshots in [JUnit Attachments Plugin](https://wiki.jenkins.io/display/JENKINS/JUnit+Attachments+Plugin) format.
 
 Attachment path can be injected into the test object
+
 ```js
-it ('should include attachment', function () {
-  this.test.attachments = ['/absolut/path/to/file.png'];
+it("should include attachment", function () {
+  this.test.attachments = ["/absolut/path/to/file.png"];
 });
 ```
 
 If both attachments and outputs are enabled, and a test injects both consoleOutputs and attachments, then
 the XML output will look like the following:
+
 ```xml
 <system-out>output line 1
 output line 2
@@ -201,12 +221,12 @@ output line 2
 | outputs                        | `false`                | if set to truthy value will include console output and console error output                                             |
 | attachments                    | `false`                | if set to truthy value will attach files to report in `JUnit Attachments Plugin` format (after console outputs, if any) |
 | antMode                        | `false`                | set to truthy value to return xml compatible with [Ant JUnit schema][ant-schema]                                        |
-| antHostname                    | `process.env.HOSTNAME` | hostname to use when running in `antMode`  will default to environment `HOSTNAME`                                       |
+| antHostname                    | `process.env.HOSTNAME` | hostname to use when running in `antMode` will default to environment `HOSTNAME`                                        |
 | jenkinsMode                    | `false`                | if set to truthy value will return xml that will display nice results in Jenkins                                        |
-| jenkinsClassnamePrefix         | `undefined`            | adds a prefix to a classname when running  in `jenkinsMode`                                                             |
+| jenkinsClassnamePrefix         | `undefined`            | adds a prefix to a classname when running in `jenkinsMode`                                                              |
 
-[travis-badge]: https://travis-ci.org/michaelleeallen/mocha-junit-reporter.svg?branch=master
-[travis-build]: https://travis-ci.org/michaelleeallen/mocha-junit-reporter
-[npm-badge]: https://img.shields.io/npm/v/mocha-junit-reporter.svg?maxAge=2592000
-[npm-listing]: https://www.npmjs.com/package/mocha-junit-reporter
+[travis-badge]: https://travis-ci.org/michaelleeallen/cypress-xray-junit-reporter.svg?branch=master
+[travis-build]: https://travis-ci.org/michaelleeallen/cypress-xray-junit-reporter
+[npm-badge]: https://img.shields.io/npm/v/cypress-xray-junit-reporter.svg?maxAge=2592000
+[npm-listing]: https://www.npmjs.com/package/cypress-xray-junit-reporter
 [ant-schema]: http://windyroad.org/dl/Open%20Source/JUnit.xsd
