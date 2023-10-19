@@ -261,9 +261,10 @@ function addPropertyMessage(message, properties) {
 
 function getScreen(test) {
   const path = test.screenshot
-  if (path) {
+  const testStatus = test.state
+  if (path && testStatus === 'passed') {
     const base64 = getBase64(path)
-    const name = path.split('\\').pop()
+    const name = path.split('/').pop()
     const failureObj = { name: name, base64: base64 }
     return failureObj
   }
@@ -471,6 +472,7 @@ MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
  * @returns {object}
  */
 MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
+  console.log(test.state)
   const jenkinsMode = this._options.jenkinsMode;
   const flipClassAndName = this._options.testCaseSwitchClassnameAndName;
   const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
