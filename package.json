@@ -6,7 +6,7 @@
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/alecmestroni/cypress-xray-junit-reporter"
+    "url": "git+https://github.com/alecmestroni/cypress-xray-junit-reporter.git"
   },
   "keywords": [
     "mocha",
