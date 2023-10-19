@@ -472,7 +472,6 @@ MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
  * @returns {object}
  */
 MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
-  console.log(test.state)
   const jenkinsMode = this._options.jenkinsMode;
   const flipClassAndName = this._options.testCaseSwitchClassnameAndName;
   const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());

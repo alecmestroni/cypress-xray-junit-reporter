@@ -3,7 +3,6 @@ const sanitize = require('sanitize-filename');
 Cypress.on('test:after:run', (test, runnable) => {
 
     let parentsArray = []
-    console.log(test)
     if (test.state === 'failed') {
         let path = `${Cypress.config('screenshotsFolder')}`
         path = path.replace("\\", "/")
@@ -13,7 +12,6 @@ Cypress.on('test:after:run', (test, runnable) => {
         path += parents
         path += sanitize(test.title) + ' (failed).png'
         test.screenshot = path
-        console.log(path)
     }
 
     function addParentPath(runnable) {
