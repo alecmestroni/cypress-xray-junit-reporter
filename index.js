@@ -37,7 +37,7 @@ try {
   // eslint-disable-next-line no-console
   console.warn("Couldn't determine Mocha version");
 }
-module.exports = MochaJUnitReporter;
+
 
 // A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
 // regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
@@ -200,6 +200,156 @@ function getJenkinsClassname(test, options) {
   return titles.join(options.suiteTitleSeparatedBy);
 }
 
+
+
+/**
+ * JUnit reporter for mocha.js.
+ * @module cypress-xray-junit-reporter
+ * @param {EventEmitter} runner - the test runner
+ * @param {Object} options - mocha options
+ */
+function MochaJUnitReporter(runner, options) {
+  if (mocha6plus) {
+    createStatsCollector(runner);
+  }
+  // Reset total tests counters
+  testTotals.registered = 0;
+  testTotals.skipped = 0;
+  this._options = configureDefaults(options);
+  this._runner = runner;
+  this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
+  this._antId = 0;
+  this._Date = (options?.Date) || Date;
+
+  const testsuites = [];
+  this._testsuites = testsuites;
+
+  function findSuite(testsuiteNum) {
+    if (testsuiteNum === 'last') {
+      return testsuites[testsuites.length - 1].testsuite;
+    } else {
+      return testsuites[testsuiteNum]?.testsuite;
+    }
+  }
+  let testsuiteNum = 0
+  const processTests = (tests) => {
+    tests.forEach((test) => {
+      const err = test.err;
+      if (test.state !== 'skipped' && test.state !== 'pending') {
+        findSuite(testsuiteNum).push(this.getTestcaseData(test, err));
+      }
+    });
+  };
+  const processSuites = (suites) => {
+    suites.forEach((suite) => {
+      testsuiteNum++
+      if (suite.suites.length && !suite.tests.length) {
+        processSuites(suite.suites);
+      } else if (suite.tests.length && !suite.suites.length) {
+        processTests(suite.tests);
+      } else if (suite.suites.length && suite.tests.length) {
+        processTests(suite.tests)
+        processSuites(suite.suites);
+      } else {
+        throw new Error('Config Error');
+      }
+    });
+  };
+
+  function mapSuites(suite, testTotals) {
+    const suites = suite.suites.reduce((acc, subSuite) => {
+      const mappedSuites = mapSuites(subSuite, testTotals);
+      if (mappedSuites) {
+        acc.push(mappedSuites);
+      }
+      return acc;
+    }, []);
+    const mappedSuite = { ...suite, suites };
+    return mappedSuite;
+  }
+
+  // get functionality from the Base reporter
+  Base.call(this, runner);
+
+  // remove old results
+  this._runner.on('start', function () {
+    if (fs.existsSync(this._options.mochaFile)) {
+      debug('removing report file', this._options.mochaFile);
+      fs.unlinkSync(this._options.mochaFile);
+    }
+  }.bind(this));
+
+  this._onSuiteBegin = function (suite) {
+    if (!isInvalidSuite(suite)) {
+      testsuites.push(this.getTestsuiteData(suite));
+    }
+  };
+
+  this._runner.on('suite', function (suite) {
+    // allow tests to mock _onSuiteBegin
+    return this._onSuiteBegin(suite);
+  }.bind(this));
+
+  this._onSuiteEnd = function (suite) {
+    if (!isInvalidSuite(suite)) {
+      const testsuite = findSuite('last');
+      if (testsuite) {
+        const start = testsuite[0]._attr.timestamp;
+        testsuite[0]._attr.time = this._Date.now() - start;
+      }
+    }
+  };
+  this._runner.on('suite end', function (suite) {
+    // allow tests to mock _onSuiteEnd
+    return this._onSuiteEnd(suite);
+  }.bind(this));
+
+  this._runner.on('end', function () {
+    const rootSuite = mapSuites(this.runner.suite, testTotals);
+    processSuites(rootSuite.suites)
+    this.flush(testsuites);
+  }.bind(this));
+}
+
+/**
+ * Produces an xml node for a test suite
+ * @param  {Object} suite - a test suite
+ * @return {Object}       - an object representing the xml node
+ */
+MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
+  const antMode = this._options.antMode;
+
+  const _attr = {
+    name: this._generateSuiteTitle(suite),
+    timestamp: this._Date.now(),
+    tests: suite.tests.length
+  };
+  const testSuite = { testsuite: [{ _attr: _attr }] };
+
+  if (suite.file) {
+    testSuite.testsuite[0]._attr.file = suite.file;
+  }
+
+  const properties = generateSuiteProperties(this._options);
+  if (properties.length || antMode) {
+    testSuite.testsuite.push({
+      properties: properties
+    });
+  }
+
+  if (antMode) {
+    _attr.package = _attr.name;
+    _attr.hostname = this._options.antHostname;
+    _attr.id = this._antId;
+    _attr.errors = 0;
+    this._antId += 1;
+  }
+
+  return testSuite;
+};
+
+
+
 function addPropertyJiraKey(jiraKey, properties) {
   if (jiraKey.length) {
     properties.push({
@@ -261,25 +411,12 @@ function addPropertyMessage(message, properties) {
 
 function getScreen(test) {
   const path = test.screenshot
-  const testStatus = test.state
-  if (path && testStatus === 'passed') {
+  if (path && test.state !== 'passed') {
     const base64 = getBase64(path)
     const name = path.split('/').pop()
     const failureObj = { name: name, base64: base64 }
     return failureObj
   }
-}
-
-function mapSuites(suite, testTotals) {
-  const suites = suite.suites.reduce((acc, subSuite) => {
-    const mappedSuites = mapSuites(subSuite, testTotals);
-    if (mappedSuites) {
-      acc.push(mappedSuites);
-    }
-    return acc;
-  }, []);
-  const mappedSuite = { ...suite, suites };
-  return mappedSuite;
 }
 
 function getBase64(path) {
@@ -324,146 +461,6 @@ function getBase64(path) {
   }
   return base64ArrayBuffer(image)
 }
-
-
-/**
- * JUnit reporter for mocha.js.
- * @module cypress-xray-junit-reporter
- * @param {EventEmitter} runner - the test runner
- * @param {Object} options - mocha options
- */
-function MochaJUnitReporter(runner, options) {
-  if (mocha6plus) {
-    createStatsCollector(runner);
-  }
-  // Reset total tests counters
-  testTotals.registered = 0;
-  testTotals.skipped = 0;
-  this._options = configureDefaults(options);
-  this._runner = runner;
-  this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
-  this._antId = 0;
-  this._Date = (options?.Date) || Date;
-
-  const testsuites = [];
-  this._testsuites = testsuites;
-
-  function findSuite(testsuiteNum) {
-    if (testsuiteNum === 'last') {
-      return testsuites[testsuites.length - 1].testsuite;
-    } else {
-      return testsuites[testsuiteNum]?.testsuite;
-    }
-  }
-
-  // get functionality from the Base reporter
-  Base.call(this, runner);
-
-  // remove old results
-  this._runner.on('start', function () {
-    if (fs.existsSync(this._options.mochaFile)) {
-      debug('removing report file', this._options.mochaFile);
-      fs.unlinkSync(this._options.mochaFile);
-    }
-  }.bind(this));
-
-  this._onSuiteBegin = function (suite) {
-    if (!isInvalidSuite(suite)) {
-      testsuites.push(this.getTestsuiteData(suite));
-    }
-  };
-
-  this._runner.on('suite', function (suite) {
-    // allow tests to mock _onSuiteBegin
-    return this._onSuiteBegin(suite);
-  }.bind(this));
-
-  this._onSuiteEnd = function (suite) {
-    if (!isInvalidSuite(suite)) {
-      const testsuite = findSuite('last');
-      if (testsuite) {
-        const start = testsuite[0]._attr.timestamp;
-        testsuite[0]._attr.time = this._Date.now() - start;
-      }
-    }
-  };
-  this._runner.on('suite end', function (suite) {
-    // allow tests to mock _onSuiteEnd
-    return this._onSuiteEnd(suite);
-  }.bind(this));
-
-  this._runner.on('end', function () {
-    let testsuiteNum = 0
-    const processTests = (tests) => {
-      tests.forEach((test) => {
-        const err = test.err;
-        findSuite(testsuiteNum).push(this.getTestcaseData(test, err));
-      });
-    };
-    const processSuites = (suites) => {
-      suites.forEach((suite) => {
-        testsuiteNum++
-        if (suite.suites.length && !suite.tests.length) {
-          processSuites(suite.suites);
-        } else if (suite.tests.length && !suite.suites.length) {
-          processTests(suite.tests);
-        } else if (suite.suites.length && suite.tests.length) {
-          processSuitesAndTests(suite)
-        } else {
-          throw new Error('Config Error');
-        }
-      });
-    };
-    const processSuitesAndTests = (suite) => {
-      processTests(suite.tests)
-      processSuites(suite.suites);
-    };
-
-
-    const rootSuite = mapSuites(this.runner.suite, testTotals);
-    processSuites(rootSuite.suites)
-
-    this.flush(testsuites);
-  }.bind(this));
-}
-
-/**
- * Produces an xml node for a test suite
- * @param  {Object} suite - a test suite
- * @return {Object}       - an object representing the xml node
- */
-MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
-  const antMode = this._options.antMode;
-
-  const _attr = {
-    name: this._generateSuiteTitle(suite),
-    timestamp: this._Date.now(),
-    tests: suite.tests.length
-  };
-  const testSuite = { testsuite: [{ _attr: _attr }] };
-
-
-  if (suite.file) {
-    testSuite.testsuite[0]._attr.file = suite.file;
-  }
-
-  const properties = generateSuiteProperties(this._options);
-  if (properties.length || antMode) {
-    testSuite.testsuite.push({
-      properties: properties
-    });
-  }
-
-  if (antMode) {
-    _attr.package = _attr.name;
-    _attr.hostname = this._options.antHostname;
-    _attr.id = this._antId;
-    _attr.errors = 0;
-    this._antId += 1;
-  }
-
-  return testSuite;
-};
 
 /**
  * Produces an xml config for a given test case.
@@ -530,7 +527,6 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
       },
       _cdata: this.removeInvalidCharacters(failureMessage)
     };
-
     testcase.testcase.push({ failure: failureElement });
   }
 
@@ -664,7 +660,6 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
     totalTests += _suiteAttr.tests;
   });
 
-
   if (!antMode) {
     const rootSuite = {
       _attr: {
@@ -701,3 +696,5 @@ MochaJUnitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
     debug('results written successfully');
   }
 };
+
+module.exports = MochaJUnitReporter;

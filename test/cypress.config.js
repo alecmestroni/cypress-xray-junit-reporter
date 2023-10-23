@@ -13,8 +13,6 @@ module.exports = defineConfig({
   },
   e2e: {
     setupNodeEvents(on, config) {
-      on('after:screenshot', (details) => {
-      })
       on('task', {
         log(text) {
           console.log(text)
@@ -22,6 +20,7 @@ module.exports = defineConfig({
         },
       })
       // implement node event listeners here
+      return config;
     },
   },
 });
