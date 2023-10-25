@@ -22,3 +22,15 @@ Cypress.on('test:after:run', (test, runnable) => {
         }
     }
 })
+
+if (!Cypress.config().isInteractive && Cypress.config().reporter !== 'spec') {
+    afterEach(() => {
+        const test = cy.state('runnable')?.ctx?.currentTest;
+        if (test.state === 'failed' && Cypress.currentRetry <= test._retries) {
+            cy.task('logYellow', `    (Attempt ${Cypress.currentRetry + 1} of ${test._retries + 1}) ${test.title}`, { log: false });
+        }
+        if (test.state === 'failed' && Cypress.currentRetry < test._retries) {
+            cy.task('logRed', `    ${test.err.parsedStack[0].message}`, { log: false });
+        }
+    });
+}
