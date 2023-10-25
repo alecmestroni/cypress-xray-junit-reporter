@@ -1,6 +1,6 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "0.0.98",
+  "version": "0.0.99",
   "description": "A JUnit reporter for mocha.",
   "main": "index.js",
   "scripts": {},
