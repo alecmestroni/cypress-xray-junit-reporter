@@ -1,7 +1,6 @@
-const sanitize = require('sanitize-filename');
 
 Cypress.on('test:after:run', (test, runnable) => {
-
+    const sanitize = require('sanitize-filename');
     let parentsArray = []
     if (test.state === 'failed') {
         let path = `${Cypress.config('screenshotsFolder')}`

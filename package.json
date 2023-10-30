@@ -1,7 +1,7 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "0.0.99",
-  "description": "A JUnit reporter for mocha.",
+  "version": "0.1.0",
+  "description": "Cypress Reporter | Produces XRay compatible JUnit-style XML test results for cypress capable to attach screenshot on test failures",
   "main": "index.js",
   "scripts": {},
   "repository": {
@@ -19,6 +19,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "base64-arraybuffer": "^1.0.2",
     "eslint": "^7.0.0",
     "mocha9": "npm:mocha@^9.1.2",
     "rimraf": "^3.0.2",

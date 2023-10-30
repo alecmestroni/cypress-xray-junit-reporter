@@ -9,10 +9,13 @@ module.exports = defineConfig({
       mochaFile: './report/[suiteName].xml',
       useFullSuiteTitle: false,
       jenkinsMode: true,
+      xrayMode: true,
+      attachScreenshot: true,
     },
   },
   e2e: {
     setupNodeEvents(on, config) {
+      require("cypress-xray-junit-reporter/plugin")(on, config, __dirname)
       on('task', {
         log(text) {
           console.log(text)

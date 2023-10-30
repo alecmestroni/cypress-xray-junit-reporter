@@ -9,49 +9,27 @@ const debug = require('debug')('cypress-xray-junit-reporter');
 const mkdirp = require('mkdirp');
 const md5 = require('md5');
 const stripAnsi = require('strip-ansi');
+const createStatsCollector = require("mocha/lib/stats-collector");
+const { encode } = require('base64-arraybuffer')
+
+// Save timer references so that times are correct even if Date is stubbed.
+// See https://github.com/mochajs/mocha/issues/237
+const Date = global.Date;
+
+// A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
+// regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
+const INVALID_CHARACTERS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uD800-\uDFFF\uFDD0-\uFDFF\uFFFF\uC008]/g; //eslint-disable-line no-control-regex
 
 const testTotals = {
   registered: 0,
   skipped: 0,
 };
 
-// Save timer references so that times are correct even if Date is stubbed.
-// See https://github.com/mochajs/mocha/issues/237
-const Date = global.Date;
-
-let createStatsCollector;
-let mocha6plus;
-
-try {
-  const json = JSON.parse(
-    fs.readFileSync(path.dirname(require.resolve('mocha')) + "/package.json", "utf8")
-  );
-  const version = json.version;
-  if (version >= "6") {
-    createStatsCollector = require("mocha/lib/stats-collector");
-    mocha6plus = true;
-  } else {
-    mocha6plus = false;
-  }
-} catch (e) {
-  // eslint-disable-next-line no-console
-  console.warn("Couldn't determine Mocha version");
-}
-
-
-// A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
-// regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
-const INVALID_CHARACTERS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uD800-\uDFFF\uFDD0-\uFDFF\uFFFF\uC008]/g; //eslint-disable-line no-control-regex
-
 function findReporterOptions(options) {
   debug('Checking for options in', options);
   if (!options) {
     debug('No options provided');
     return {};
-  }
-  if (!mocha6plus) {
-    debug('Options for pre mocha@6');
-    return options.reporterOptions || {};
   }
   if (options.reporterOptions) {
     debug('Command-line options for mocha@6+');
@@ -69,34 +47,20 @@ function findReporterOptions(options) {
 function configureDefaults(options) {
   const config = findReporterOptions(options);
   debug('options', config);
-  config.mochaFile = getSetting(config.mochaFile, 'MOCHA_FILE', 'test-results.xml');
-  config.attachments = getSetting(config.attachments, 'ATTACHMENTS', false);
-  config.antMode = getSetting(config.antMode, 'ANT_MODE', false);
-  config.jenkinsMode = getSetting(config.jenkinsMode, 'JENKINS_MODE', false);
-  config.properties = getSetting(config.properties, 'PROPERTIES', null, parsePropertiesFromEnv);
+  config.mochaFile = getSetting(config.mochaFile, 'test-results.xml');
+  config.jenkinsMode = getSetting(config.jenkinsMode, false);
+  config.xrayMode = getSetting(config.xrayMode, false);
+  config.attachScreenshot = getSetting(config.attachScreenshot, false);
+  config.properties = getSetting(config.properties, null);
   config.toConsole = !!config.toConsole;
   config.rootSuiteTitle = config.rootSuiteTitle || 'Root Suite';
   config.testsuitesTitle = config.testsuitesTitle || 'Mocha Tests';
-
-  if (config.antMode) {
-    updateOptionsForAntMode(config);
-  }
+  config.suiteTitleSeparatedBy = config.suiteTitleSeparatedBy || ' ';
 
   if (config.jenkinsMode) {
     updateOptionsForJenkinsMode(config);
   }
-
-  config.suiteTitleSeparatedBy = config.suiteTitleSeparatedBy || ' ';
-
   return config;
-}
-
-function updateOptionsForAntMode(options) {
-  options.antHostname = getSetting(options.antHostname, 'ANT_HOSTNAME', process.env.HOSTNAME);
-
-  if (!options.properties) {
-    options.properties = {};
-  }
 }
 
 function updateOptionsForJenkinsMode(options) {
@@ -111,23 +75,7 @@ function updateOptionsForJenkinsMode(options) {
     options.suiteTitleSeparatedBy = '.';
   }
 }
-
-/**
- * Determine an option value.
- * 1. If `key` is present in the environment, then use the environment value
- * 2. If `value` is specified, then use that value
- * 3. Fall back to `defaultVal`
- * @module cypress-xray-junit-reporter
- * @param {Object} value - the value from the reporter options
- * @param {String} key - the environment variable to check
- * @param {Object} defaultVal - the fallback value
- * @param {function} transform - a transformation function to be used when loading values from the environment
- */
-function getSetting(value, key, defaultVal, transform) {
-  if (process.env[key] !== undefined) {
-    const envVal = process.env[key];
-    return (typeof transform === 'function') ? transform(envVal) : envVal;
-  }
+function getSetting(value, defaultVal) {
   if (value !== undefined) {
     return value;
   }
@@ -161,19 +109,6 @@ function isInvalidSuite(suite) {
   return (!suite.root && suite.title === '') || (suite.tests.length === 0 && suite.suites.length === 0);
 }
 
-function parsePropertiesFromEnv(envValue) {
-  if (envValue) {
-    debug('Parsing from env', envValue);
-    return envValue.split(',').reduce(function (properties, prop) {
-      const property = prop.split(':');
-      properties[property[0]] = property[1];
-      return properties;
-    }, []);
-  }
-
-  return null;
-}
-
 function generateSuiteProperties(options) {
   const props = options.properties;
   if (!props) {
@@ -200,18 +135,16 @@ function getJenkinsClassname(test, options) {
   return titles.join(options.suiteTitleSeparatedBy);
 }
 
-
-
 /**
  * JUnit reporter for mocha.js.
  * @module cypress-xray-junit-reporter
  * @param {EventEmitter} runner - the test runner
  * @param {Object} options - mocha options
  */
-function MochaJUnitReporter(runner, options) {
-  if (mocha6plus) {
-    createStatsCollector(runner);
-  }
+function CypressXrayJunitReporter(runner, options) {
+
+  createStatsCollector(runner);
+
   // Reset total tests counters
   testTotals.registered = 0;
   testTotals.skipped = 0;
@@ -316,9 +249,7 @@ function MochaJUnitReporter(runner, options) {
  * @param  {Object} suite - a test suite
  * @return {Object}       - an object representing the xml node
  */
-MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
-  const antMode = this._options.antMode;
-
+CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   const _attr = {
     name: this._generateSuiteTitle(suite),
     timestamp: this._Date.now(),
@@ -331,24 +262,15 @@ MochaJUnitReporter.prototype.getTestsuiteData = function (suite) {
   }
 
   const properties = generateSuiteProperties(this._options);
-  if (properties.length || antMode) {
+
+  if (properties.length) {
     testSuite.testsuite.push({
       properties: properties
     });
   }
 
-  if (antMode) {
-    _attr.package = _attr.name;
-    _attr.hostname = this._options.antHostname;
-    _attr.id = this._antId;
-    _attr.errors = 0;
-    this._antId += 1;
-  }
-
   return testSuite;
 };
-
-
 
 function addPropertyJiraKey(jiraKey, properties) {
   if (jiraKey.length) {
@@ -420,46 +342,8 @@ function getScreen(test) {
 }
 
 function getBase64(path) {
-  const image = fs.readFileSync(path, { enconding: 'base64' })
-  function base64ArrayBuffer(arrayBuffer) {
-    let base64 = ''
-    const encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    const bytes = new Uint8Array(arrayBuffer)
-    const byteLength = bytes.byteLength
-    const byteRemainder = byteLength % 3
-    const mainLength = byteLength - byteRemainder
-    let a, b, c, d
-    let chunk
-    // Main loop deals with bytes in chunks of 3
-    for (let i = 0; i < mainLength; i = i + 3) {
-      // Combine the three bytes into a single integer
-      chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2]
-      // Use bitmasks to extract 6-bit segments from the triplet
-      a = (chunk & 16515072) >> 18 // 16515072 = (2^6 - 1) << 18
-      b = (chunk & 258048) >> 12 // 258048   = (2^6 - 1) << 12
-      c = (chunk & 4032) >> 6 // 4032     = (2^6 - 1) << 6
-      d = chunk & 63               // 63       = 2^6 - 1
-      // Convert the raw binary segments to the appropriate ASCII encoding
-      base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d]
-    }
-    // Deal with the remaining bytes and padding
-    if (byteRemainder == 1) {
-      chunk = bytes[mainLength]
-      a = (chunk & 252) >> 2 // 252 = (2^6 - 1) << 2
-      // Set the 4 least significant bits to zero
-      b = (chunk & 3) << 4 // 3   = 2^2 - 1
-      base64 += encodings[a] + encodings[b] + '=='
-    } else if (byteRemainder == 2) {
-      chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1]
-      a = (chunk & 64512) >> 10 // 64512 = (2^6 - 1) << 10
-      b = (chunk & 1008) >> 4 // 1008  = (2^6 - 1) << 4
-      // Set the 2 least significant bits to zero
-      c = (chunk & 15) << 2 // 15    = 2^4 - 1
-      base64 += encodings[a] + encodings[b] + encodings[c] + '='
-    }
-    return base64
-  }
-  return base64ArrayBuffer(image)
+  const arrayBuffer = fs.readFileSync(path, { enconding: 'base64' })
+  return encode(arrayBuffer)
 }
 
 /**
@@ -468,7 +352,9 @@ function getBase64(path) {
  * @param {object} err - if test failed, the failure object
  * @returns {object}
  */
-MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
+CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
+  const xrayMode = this._options.xrayMode
+  const attachScreenshot = this._options.attachScreenshot
   const jenkinsMode = this._options.jenkinsMode;
   const flipClassAndName = this._options.testCaseSwitchClassnameAndName;
   const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
@@ -483,18 +369,11 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
     }]
   };
 
-  // We need to merge console.logs and attachments into one <system-out> -
+  // We need to merge console.logs into one <system-out> -
   //  see JUnit schema (only accepts 1 <system-out> per test).
   let systemOutLines = [];
   if (this._options.outputs && (test.consoleOutputs && test.consoleOutputs.length > 0)) {
     systemOutLines = systemOutLines.concat(test.consoleOutputs);
-  }
-  if (this._options.attachments && test.attachments && test.attachments.length > 0) {
-    systemOutLines = systemOutLines.concat(test.attachments.map(
-      function (file) {
-        return '[[ATTACHMENT|' + file + ']]';
-      }
-    ));
   }
   if (systemOutLines.length > 0) {
     testcase.testcase.push({ 'system-out': this.removeInvalidCharacters(stripAnsi(systemOutLines.join('\n'))) });
@@ -531,17 +410,25 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   let properties = []
-  const jiraKey = parseJiraKeyFromConfig(test)
-  addPropertyJiraKey(jiraKey, properties)
-  const screenshot = getScreen(test)
-  addPropertyScreenshot(screenshot, properties)
-  const errMessage = getErrorMsg(testcase)
-  addPropertyMessage(errMessage, properties)
+
+  if (xrayMode) {
+    const jiraKey = parseJiraKeyFromConfig(test)
+    addPropertyJiraKey(jiraKey, properties)
+  }
+
+  if (attachScreenshot) {
+    const screenshot = getScreen(test)
+    addPropertyScreenshot(screenshot, properties)
+    const errMessage = getErrorMsg(testcase)
+    addPropertyMessage(errMessage, properties)
+  }
+
   if (properties.length) {
     testcase.testcase.push({
       properties,
     })
   }
+
   return testcase;
 };
 
@@ -549,7 +436,7 @@ MochaJUnitReporter.prototype.getTestcaseData = function (test, err) {
  * @param {string} input
  * @returns {string} without invalid characters
  */
-MochaJUnitReporter.prototype.removeInvalidCharacters = function (input) {
+CypressXrayJunitReporter.prototype.removeInvalidCharacters = function (input) {
   if (!input) {
     return input;
   }
@@ -560,7 +447,7 @@ MochaJUnitReporter.prototype.removeInvalidCharacters = function (input) {
  * Writes xml to disk and ouputs content if "toConsole" is set to true.
  * @param {Array.<Object>} testsuites - a list of xml configs
  */
-MochaJUnitReporter.prototype.flush = function (testsuites) {
+CypressXrayJunitReporter.prototype.flush = function (testsuites) {
   this._xml = this.getXml(testsuites);
 
   const reportFilename = this.formatReportFilename(this._xml, testsuites);
@@ -577,7 +464,7 @@ MochaJUnitReporter.prototype.flush = function (testsuites) {
  * @param {string} xml - xml string
  * @param {Array.<Object>} testsuites - a list of xml configs
  */
-MochaJUnitReporter.prototype.formatReportFilename = function (xml, testsuites) {
+CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsuites) {
 
   const sanitize = require('sanitize-filename');
   let reportFilename = this._options.mochaFile;
@@ -606,11 +493,10 @@ MochaJUnitReporter.prototype.formatReportFilename = function (xml, testsuites) {
  * @param {Array.<Object>} testsuites - a list of xml configs
  * @returns {string}
  */
-MochaJUnitReporter.prototype.getXml = function (testsuites) {
+CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
   let totalTests = 0;
   const stats = this._runner.stats;
-  const antMode = this._options.antMode;
-  const hasProperties = (!!this._options.properties) || antMode;
+  const hasProperties = (!!this._options.properties)
   const Date = this._Date;
 
   testsuites.forEach(function (suite) {
@@ -619,7 +505,6 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
     // we want to make sure that we are grabbing test cases at the correct index
     const _casesIndex = hasProperties ? 2 : 1;
     const _cases = suite.testsuite.slice(_casesIndex);
-    let missingProps;
 
     // suiteTime has unrounded time as a Number of milliseconds
     const suiteTime = _suiteAttr.time;
@@ -639,20 +524,6 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
       }
     });
 
-    if (antMode) {
-      missingProps = ['system-out', 'system-err'];
-      suite.testsuite.forEach(function (item) {
-        missingProps = missingProps.filter(function (prop) {
-          return !item[prop];
-        });
-      });
-      missingProps.forEach(function (prop) {
-        const obj = {};
-        obj[prop] = [];
-        suite.testsuite.push(obj);
-      });
-    }
-
     if (!_suiteAttr.skipped) {
       delete _suiteAttr.skipped;
     }
@@ -660,20 +531,18 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
     totalTests += _suiteAttr.tests;
   });
 
-  if (!antMode) {
-    const rootSuite = {
-      _attr: {
-        name: this._options.testsuitesTitle,
-        time: (stats.duration / 1000 || 0).toFixed(3),
-        tests: totalTests,
-        failures: stats.failures
-      }
-    };
-    if (stats.pending) {
-      rootSuite._attr.skipped = stats.pending;
+  const rootSuite = {
+    _attr: {
+      name: this._options.testsuitesTitle,
+      time: (stats.duration / 1000 || 0).toFixed(3),
+      tests: totalTests,
+      failures: stats.failures
     }
-    testsuites = [rootSuite].concat(testsuites);
+  };
+  if (stats.pending) {
+    rootSuite._attr.skipped = stats.pending;
   }
+  testsuites = [rootSuite].concat(testsuites);
 
   return xml({ testsuites: testsuites }, { declaration: true, indent: '  ' });
 };
@@ -683,7 +552,7 @@ MochaJUnitReporter.prototype.getXml = function (testsuites) {
  * @param {string} xml - xml string
  * @param {string} filePath - path to output file
  */
-MochaJUnitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
+CypressXrayJunitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
   if (filePath) {
     debug('writing file to', filePath);
     mkdirp.sync(path.dirname(filePath));
@@ -697,4 +566,4 @@ MochaJUnitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
   }
 };
 
-module.exports = MochaJUnitReporter;
+module.exports = CypressXrayJunitReporter;
