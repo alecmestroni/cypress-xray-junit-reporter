@@ -11,6 +11,7 @@ const md5 = require('md5');
 const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
 const { encode } = require('base64-arraybuffer')
+const chalk = require("chalk");
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
@@ -49,7 +50,7 @@ function configureDefaults(options) {
   debug('options', config);
   config.mochaFile = getSetting(config.mochaFile, 'test-results.xml');
   config.jenkinsMode = getSetting(config.jenkinsMode, false);
-  config.xrayMode = getSetting(config.xrayMode, false);
+  config.xrayMode = getSetting(config.xrayMode, true);
   config.attachScreenshot = getSetting(config.attachScreenshot, false);
   config.toConsole = !!config.toConsole;
   config.rootSuiteTitle = config.rootSuiteTitle || 'Root Suite';
@@ -163,22 +164,31 @@ function CypressXrayJunitReporter(runner, options) {
       return testsuites[testsuiteNum]?.testsuite;
     }
   }
-  let testsuiteNum = 0
   const processTests = (tests) => {
+    let testcaseNum = 0
     tests.forEach((test) => {
       const err = test.err;
       if (test.state !== 'skipped' && test.state !== 'pending') {
         findSuite(testsuiteNum).push(this.getTestcaseData(test, err));
       }
+      testcaseNum++
     });
+    if (!missingJiraKey) { console.log('         Successfully analyzed ' + testcaseNum + ' test\n' + chalk.green('      ✔  ' + tests[0].parent.title + ' processed correctly')) }
   };
+
+  let testsuiteNum = 0
   const processSuites = (suites) => {
+    console.log('\x1B[37m====================================================================================================\n')
+    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report\n'))
+    console.log(chalk.white('    ⏳ Retrieving suites information... '))
     suites.forEach((suite) => {
       testsuiteNum++
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
       } else if (suite.tests.length && !suite.suites.length) {
+        console.log(chalk.white('\n      〰️ Analyzing #' + testsuiteNum + ' suite: ') + chalk.cyan(suite.title))
         processTests(suite.tests);
+
       } else if (suite.suites.length && suite.tests.length) {
         processTests(suite.tests)
         processSuites(suite.suites);
@@ -186,6 +196,7 @@ function CypressXrayJunitReporter(runner, options) {
         throw new Error('Config Error');
       }
     });
+    console.log('\n\x1B[37m====================================================================================================\n')
   };
 
   function mapSuites(suite, testTotals) {
@@ -271,12 +282,12 @@ CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   return testSuite;
 };
 
+let missingJiraKey
+
 function addPropertyJiraKey(jiraKey, properties) {
-  if (jiraKey.length) {
-    properties.push({
-      property: { _attr: { name: 'test_key', value: jiraKey } }
-    })
-  }
+  properties.push({
+    property: { _attr: { name: 'test_key', value: jiraKey } }
+  })
 }
 
 function parseJiraKeyFromConfig(test) {
@@ -292,19 +303,17 @@ function parseJiraKeyFromConfig(test) {
 }
 
 function addPropertyScreenshot(screenshot, properties) {
-  if (screenshot) {
-    const fileName = screenshot.name
-    const base64 = screenshot.base64
-    properties.push({
-      property: [{
-        _attr: { name: 'testrun_evidence' }
-      }, {
-        item: [{
-          _attr: { name: fileName }
-        }, base64]
-      }]
-    })
-  }
+  const fileName = screenshot.name
+  const base64 = screenshot.base64
+  properties.push({
+    property: [{
+      _attr: { name: 'testrun_evidence' }
+    }, {
+      item: [{
+        _attr: { name: fileName }
+      }, base64]
+    }]
+  })
 }
 
 function getErrorMsg(testcase) {
@@ -352,6 +361,7 @@ function getBase64(path) {
  * @returns {object}
  */
 CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
+  missingJiraKey = false
   const xrayMode = this._options.xrayMode
   const attachScreenshot = this._options.attachScreenshot
   const jenkinsMode = this._options.jenkinsMode;
@@ -412,12 +422,19 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
 
   if (xrayMode) {
     const jiraKey = parseJiraKeyFromConfig(test)
-    addPropertyJiraKey(jiraKey, properties)
+    if (jiraKey.length) {
+      addPropertyJiraKey(jiraKey, properties)
+    } else {
+      missingJiraKey = true
+      console.log('        ❌ Missing jira key in testcase:' + test.title)
+    }
   }
 
   if (attachScreenshot) {
     const screenshot = getScreen(test)
-    addPropertyScreenshot(screenshot, properties)
+    if (screenshot) {
+      addPropertyScreenshot(screenshot, properties)
+    }
     const errMessage = getErrorMsg(testcase)
     addPropertyMessage(errMessage, properties)
   }
@@ -427,7 +444,6 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
       properties,
     })
   }
-
   return testcase;
 };
 

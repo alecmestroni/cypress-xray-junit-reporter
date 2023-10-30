@@ -1,6 +1,6 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "0.2.0",
+  "version": "0.2.8",
   "description": "Cypress Reporter | Produces XRay compatible JUnit-style XML test results for cypress capable to attach screenshot on test failures",
   "main": "index.js",
   "scripts": {},
@@ -15,7 +15,7 @@
     "cypress"
   ],
   "author": {
-    "name": "Alec Mestroni "
+    "name": "alec-js"
   },
   "license": "MIT",
   "devDependencies": {

@@ -1,8 +1,28 @@
-# Cypress Xray Junit Reporter | Writing XML report compatible with XRAY & Jira
+# Writing XML report compatible with XRAY & JIRA
 
-[![npm][npm-badge]][npm-listing] [![Donations Badge](img\badge.svg)](https://paypal.me/AlecMestroni?country.x=IT&locale.x=it_IT)
+<h3 align="center">
+  <img src="https://www.getxray.app/hubfs/Marketing/Blog/Blog%20images/Images%202023/Cypress%20Tutorial/Xray-Cypress-Tutorial.png" alt="Cypress Xray Junit Reporter" width="50%" align="center"/>
+</h3>
 
-🙌 Donate to support my work! 🙌
+<h3 align="center">
+🙌 Donate to support my work & further development! 🙌
+</h3>
+
+<h3 align="center">
+  <a href="https://paypal.me/AlecMestroni?country.x=IT&locale.x=it_IT">
+    <img src="https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/badge.svg" width="111" align="center" />
+  </a>
+</h3>
+<h3 align="center">
+  <a href="https://www.npmjs.com/package/cypress-xray-junit-reporter">
+    <img src="https://img.shields.io/npm/v/cypress-xray-junit-reporter" align="center" />
+  </a>
+  <a href="https://www.npmjs.com/package/cypress-xray-junit-reporter">
+    <img src="https://img.shields.io/npm/dm/cypress-xray-junit-reporter"  align="center" />
+  </a>
+</h3>
+
+##
 
 Cypress Xray Junit Reporter is a custom-reporter capable to produce XRAY compatible JUnit-style XML test results that can also attach screenshots of test failures to the report.  
 This reporter is tailor-made on the XRAY's guide ["Taking advantage of JUnit XML reports"](https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports) and on the Cypress guide ["Custom reporter"](https://docs.cypress.io/guides/tooling/reporters#Custom-reporter).  
@@ -11,10 +31,7 @@ XML cypress custom reporter based on Mocha to be compatible with:
 - [XRAY | Native Test Management for Jira](https://www.getxray.app/)
 - [CYPRESS | Testing framework](https://www.cypress.io/)
 
-[npm-badge]: https://img.shields.io/npm/v/cypress-xray-junit-reporter.svg?maxAge=2592000
-[npm-listing]: https://www.npmjs.com/package/cypress-xray-junit-reporter
-
-## Installation
+## Install
 
 ```shell
 $ npm install cypress-xray-junit-reporter --save-dev
@@ -26,33 +43,16 @@ or as a global module
 $ npm install -g cypress-xray-junit-reporter
 ```
 
-## Compelte reporterOptions list
-
-| Parameter                      | Default            | Effect                                                                                           |
-| ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------ |
-| mochaFile                      | `test-results.xml` | configures the file-name of the report, compatible with placeholders (see next section)          |
-| xrayMode                       | `true`             | if setted to true, the XML report will contains the jiraKey property in XRAY format              |
-| attachScreenshot               | `false`            | if setted to true, the XML report will contains the test failure screenshot in XRAY format       |
-| testCaseSwitchClassnameAndName | `false`            | if setted to true, to switch name and classname values                                           |
-| testsuitesTitle                | `"Mocha Tests"`    | if setted, changes the name for the XML testsuites tag, can be used a mochaFile name placeholder |
-| rootSuiteTitle                 | `"Root Suite"`     | if setted, changes the name for the XML rootsuites tag, can be used a mochaFile name placeholder |
-| useFullSuiteTitle              | `false`            | if setted to true, nested suites' titles will show the suite lineage                             |
-| suiteTitleSeparatedBy          | ` ` (space)        | the character to use to separate nested suite titles (defaults to ' ', '.' if in jenkins mode)   |
-| jenkinsMode                    | `false`            | if setted to true, will return XML that will display nice results in Jenkins                     |
-| jenkinsClassnamePrefix         | `undefined`        | if setted, adds a prefix to a classname when running in `jenkinsMode`                            |
-| outputs                        | `false`            | if setted to true, will include console output and console error output into XML                 |
-| toConsole                      | `false`            | if setted to true, the produced XML will be logged to the console                                |
-
 ## XRAY Mode
 
-With this costum report will be easy for you to connect your tests with your JIRA test issue, creating test exucution report compatible with XRAY.
+With this custom report will be easy for you to connect your tests with your JIRA test issue, creating test execution report compatible with XRAY.
 
 ### 1. Naming the output file
 
 By default if a file test-report.xml already exists it will be overwritten.  
-So the mochaFile option can contain placeholders, e.g. `./path_to_your/test-results.[hash].xml`.  
-`[hash]` enables support of parallel execution of multiple `cypress-xray-junit-reporter`'s writing test results in separate files.  
-In addition to `[hash]`, this these can also be used:
+The use of placeholders enables support of parallel execution of multiple test,`cypress-xray-junit-reporter` will write test results in separate files.  
+The mochaFile option can contain placeholders, e.g. `./path_to_your/test-results.[hash].xml`.  
+In addition to `[hash]`, these can also be used:
 
 | placeholder         | output                                            |
 | ------------------- | ------------------------------------------------- |
@@ -73,7 +73,7 @@ module.exports = defineConfig({
 		mochaFile: './report/[suiteName].xml',
 		useFullSuiteTitle: false,
 		jenkinsMode: true,
-		xrayMode: true, // if JiraKey are setted correctly inside the test the XML report will contain the JiraKey value
+		xrayMode: true, // if JiraKey are set correctly inside the test the XML report will contain the JiraKey value
 		attachScreenshot: true, // if a test fails, the screenshot will be attached to the XML report and imported into xray
 	},
 	e2e: {
@@ -121,7 +121,7 @@ Report file generated at '<Cypress_project_root>/cypress/results'.
 </testsuites>
 ```
 
-As you can see the property has beenn added and now could be readed correctly by XRAY.
+As you can see the property has been added and now could be read correctly by XRAY.
 
 ```xml
 <properties>
@@ -135,7 +135,7 @@ Now just upload the report to XRAY and the card in Jira will be updated automati
 
 ### Attach screenshot on failure
 
-If you want to **attach the creenshot** of the failed testCase into the XML, you can use the `attachScreenshot` reporter option.
+If you want to **attach the screenshot** of the failed testCase into the XML, you can use the `attachScreenshot` reporter option.
 The screenshot will be automatically converted into base64 and attached to the XML report.
 
 ```xml
@@ -146,7 +146,7 @@ The screenshot will be automatically converted into base64 and attached to the X
 
 The testRun will include the screenshot as following:
 
-![testRunEvidence](img\testRunEvidence.png)
+![testRunEvidence](https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/testRunEvidence.png)
 
 ### Switch classname and name
 
@@ -160,3 +160,20 @@ Here is an example of the XML output when using the `testCaseSwitchClassnameAndN
 | `true`            | `<testcase name="should behave like so" classname="Super Suite should behave like so">` |
 
 You can also configure the `testsuites.name` attribute by setting `reporterOptions.testsuitesTitle` and the root suite's `name` attribute by setting `reporterOptions.rootSuiteTitle`.
+
+## Complete reporterOptions list
+
+| Parameter                      | Default            | Effect                                                                                         |
+| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
+| mochaFile                      | `test-results.xml` | configures the file-name of the report, compatible with placeholders (see next section)        |
+| xrayMode                       | `true`             | if set to true, the XML report will contains the jiraKey property in XRAY format               |
+| attachScreenshot               | `false`            | if set to true, the XML report will contains the test failure screenshot in XRAY format        |
+| testCaseSwitchClassnameAndName | `false`            | if set to true, to switch name and classname values                                            |
+| testsuitesTitle                | `"Mocha Tests"`    | if set, changes the name for the XML testsuites tag, can be used a mochaFile name placeholder  |
+| rootSuiteTitle                 | `"Root Suite"`     | if set, changes the name for the XML rootsuites tag, can be used a mochaFile name placeholder  |
+| useFullSuiteTitle              | `false`            | if set to true, nested suites' titles will show the suite lineage                              |
+| suiteTitleSeparatedBy          | ` ` (space)        | the character to use to separate nested suite titles (defaults to ' ', '.' if in jenkins mode) |
+| jenkinsMode                    | `false`            | if set to true, will return XML that will display nice results in Jenkins                      |
+| jenkinsClassnamePrefix         | `undefined`        | if set, adds a prefix to a classname when running in `jenkinsMode`                             |
+| outputs                        | `false`            | if set to true, will include console output and console error output into XML                  |
+| toConsole                      | `false`            | if set to true, the produced XML will be logged to the console                                 |
