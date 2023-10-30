@@ -51,7 +51,6 @@ function configureDefaults(options) {
   config.jenkinsMode = getSetting(config.jenkinsMode, false);
   config.xrayMode = getSetting(config.xrayMode, false);
   config.attachScreenshot = getSetting(config.attachScreenshot, false);
-  config.properties = getSetting(config.properties, null);
   config.toConsole = !!config.toConsole;
   config.rootSuiteTitle = config.rootSuiteTitle || 'Root Suite';
   config.testsuitesTitle = config.testsuitesTitle || 'Mocha Tests';
