@@ -29,7 +29,7 @@ This reporter is tailor-made on the XRAY's guide ["Taking advantage of JUnit XML
 XML cypress custom reporter based on Mocha to be compatible with:
 
 - [XRAY | Native Test Management for Jira](https://www.getxray.app/)
-- [CYPRESS | Testing framework](https://www.cypress.io/)
+- [CYPRESS V10+ | Testing framework](https://www.cypress.io/)
 
 ## Install
 
@@ -64,6 +64,8 @@ In addition to `[hash]`, these can also be used:
 
 ### 2. Cypress configuration
 
+Inside cypress.config.js file:
+
 ```javascript
 // cypress.config.js
 const { defineConfig } = require('cypress')
@@ -78,10 +80,20 @@ module.exports = defineConfig({
 	},
 	e2e: {
 		setupNodeEvents(on, config) {
-			// implement node event listeners here
+			require('cypress-xray-junit-reporter/plugin')(on, config, {}) // also needed
+			return config
 		},
 	},
 })
+```
+
+Note: This example shows how to install the plugin for e2e testing type. Read Cypress configuration docs for further info.
+
+At the top of your support file (usually cypress/support/e2e.js for e2e testing type):
+
+```javascript
+// cypress/support/e2e.js
+import 'cypress-xray-junit-reporter/support'
 ```
 
 ### 3. Setting up your jiraKeys

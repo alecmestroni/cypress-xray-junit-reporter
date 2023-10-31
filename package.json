@@ -1,6 +1,6 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "0.2.8",
+  "version": "0.4.0",
   "description": "Cypress Reporter | Produces XRay compatible JUnit-style XML test results for cypress capable to attach screenshot on test failures",
   "main": "index.js",
   "scripts": {},
@@ -19,7 +19,6 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "base64-arraybuffer": "^1.0.2",
     "eslint": "^7.0.0",
     "mocha9": "npm:mocha@^9.1.2",
     "rimraf": "^3.0.2",
@@ -27,8 +26,9 @@
     "xmllint": "^0.1.1"
   },
   "dependencies": {
-    "chalk": "^4.1.2",
     "debug": "^4.3.4",
+    "base64-arraybuffer": "^1.0.2",
+    "chalk": "^4.1.2",
     "md5": "^2.3.0",
     "mkdirp": "^3.0.0",
     "sanitize-filename": "^1.6.3",

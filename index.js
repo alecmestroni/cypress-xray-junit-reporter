@@ -173,30 +173,38 @@ function CypressXrayJunitReporter(runner, options) {
       }
       testcaseNum++
     });
-    if (!missingJiraKey) { console.log('         Successfully analyzed ' + testcaseNum + ' test\n' + chalk.green('      ✔  ' + tests[0].parent.title + ' processed correctly')) }
+    if (missingJiraKey.length === 0) {
+      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔  Successfully analyzed ' + testcaseNum + ' testCase(s)'))
+    } else {
+      missingJiraKey.forEach((testTitle) => {
+        console.log(whitespace.repeat(repeatWhitespace) + '❌ Missing jira key in testcase: ' + testTitle)
+      })
+      missingJiraKey = []
+    }
   };
-
+  const whitespace = "  "
+  let repeatWhitespace = 2
   let testsuiteNum = 0
   const processSuites = (suites) => {
-    console.log('\x1B[37m====================================================================================================\n')
-    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report\n'))
-    console.log(chalk.white('    ⏳ Retrieving suites information... '))
+    console.log(whitespace.repeat(repeatWhitespace) + chalk.yellow('〰 Founded ' + suites.length + ' subSuite(s), keep scraping'))
+    repeatWhitespace++
     suites.forEach((suite) => {
       testsuiteNum++
+      console.log('\n' + whitespace.repeat(repeatWhitespace) + chalk.white('〰 Analyzing #' + testsuiteNum + ' suite: ') + chalk.cyan(suite.title) + '\n' + whitespace.repeat(repeatWhitespace) + '🔍 Looking for a testCase')
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
       } else if (suite.tests.length && !suite.suites.length) {
-        console.log(chalk.white('\n      〰️ Analyzing #' + testsuiteNum + ' suite: ') + chalk.cyan(suite.title))
         processTests(suite.tests);
-
       } else if (suite.suites.length && suite.tests.length) {
         processTests(suite.tests)
         processSuites(suite.suites);
       } else {
         throw new Error('Config Error');
       }
+      console.log(whitespace.repeat(repeatWhitespace) + chalk.white('〰 End of suite: ') + chalk.cyan(suite.title))
     });
-    console.log('\n\x1B[37m====================================================================================================\n')
+    repeatWhitespace--
+
   };
 
   function mapSuites(suite, testTotals) {
@@ -249,8 +257,13 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._runner.on('end', function () {
     const rootSuite = mapSuites(this.runner.suite, testTotals);
+    console.log('\x1B[37m====================================================================================================\n')
+    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report\n'))
+    console.log(chalk.white('    ⏳ Retrieving suites information... '))
     processSuites(rootSuite.suites)
     this.flush(testsuites);
+    console.log(chalk.white('\n    All suites has been parsed correctly!\n'))
+    console.log('\n\x1B[37m====================================================================================================\n')
   }.bind(this));
 }
 
@@ -260,6 +273,7 @@ function CypressXrayJunitReporter(runner, options) {
  * @return {Object}       - an object representing the xml node
  */
 CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
+
   const _attr = {
     name: this._generateSuiteTitle(suite),
     timestamp: this._Date.now(),
@@ -282,7 +296,7 @@ CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   return testSuite;
 };
 
-let missingJiraKey
+let missingJiraKey = []
 
 function addPropertyJiraKey(jiraKey, properties) {
   properties.push({
@@ -361,7 +375,6 @@ function getBase64(path) {
  * @returns {object}
  */
 CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
-  missingJiraKey = false
   const xrayMode = this._options.xrayMode
   const attachScreenshot = this._options.attachScreenshot
   const jenkinsMode = this._options.jenkinsMode;
@@ -425,8 +438,8 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     if (jiraKey.length) {
       addPropertyJiraKey(jiraKey, properties)
     } else {
-      missingJiraKey = true
-      console.log('        ❌ Missing jira key in testcase:' + test.title)
+      missingJiraKey.push(test.title)
+
     }
   }
 
