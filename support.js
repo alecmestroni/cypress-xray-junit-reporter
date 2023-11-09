@@ -22,7 +22,7 @@ Cypress.on('test:after:run', (test, runnable) => {
     }
 })
 
-if (!Cypress.config().isInteractive && Cypress.config().reporter !== 'spec') {
+if (!Cypress.config().isInteractive && Cypress.config().reporter !== 'spec' && Cypress.config().betterRetries) {
     afterEach(() => {
         const test = cy.state('runnable')?.ctx?.currentTest;
         if (test.state === 'failed' && Cypress.currentRetry <= test._retries) {

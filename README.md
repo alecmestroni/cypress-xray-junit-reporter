@@ -1,24 +1,18 @@
 # Writing XML report compatible with XRAY & JIRA
 
 <h3 align="center">
-  <img src="https://www.getxray.app/hubfs/Marketing/Blog/Blog%20images/Images%202023/Cypress%20Tutorial/Xray-Cypress-Tutorial.png" alt="Cypress Xray Junit Reporter" width="50%" align="center"/>
+  <img src="https://www.getxray.app/hubfs/Marketing/Blog/Blog%20images/Images%202023/Cypress%20Tutorial/Xray-Cypress-Tutorial.png" alt="Cypress Xray Junit Reporter" width="45%" align="center"/>
 </h3>
 
-<h3 align="center">
-🙌 Donate to support my work & further development! 🙌
-</h3>
-
-<h3 align="center">
-  <a href="https://paypal.me/AlecMestroni?country.x=IT&locale.x=it_IT">
-    <img src="https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/badge.svg" width="111" align="center" />
-  </a>
-</h3>
 <h3 align="center">
   <a href="https://www.npmjs.com/package/cypress-xray-junit-reporter">
     <img src="https://img.shields.io/npm/v/cypress-xray-junit-reporter" align="center" />
   </a>
   <a href="https://www.npmjs.com/package/cypress-xray-junit-reporter">
     <img src="https://img.shields.io/npm/dm/cypress-xray-junit-reporter"  align="center" />
+  </a>
+    <a href="https://paypal.me/AlecMestroni?country.x=IT&locale.x=it_IT">
+    <img src="https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/badge.svg" align="center" />
   </a>
 </h3>
 
@@ -30,6 +24,13 @@ XML cypress custom reporter based on Mocha to be compatible with:
 
 - [XRAY | Native Test Management for Jira](https://www.getxray.app/)
 - [CYPRESS V10+ | Testing framework](https://www.cypress.io/)
+
+**This plugin will also add support for two new cypress features:**
+
+- deleteVideoOnPassed (delete the videos of passed specs)
+- betterRetries (logs cypress errors on retries)
+
+See [here](https://www.npmjs.com/package/cypress-xray-junit-reporter#extra-features) for more information
 
 ## Install
 
@@ -54,22 +55,25 @@ The use of placeholders enables support of parallel execution of multiple test,`
 The mochaFile option can contain placeholders, e.g. `./path_to_your/test-results.[hash].xml`.  
 In addition to `[hash]`, these can also be used:
 
-| placeholder         | output                                            |
-| ------------------- | ------------------------------------------------- |
-| `[testsuitesTitle]` | will be replaced by the `testsuitesTitle` setting |
-| `[rootSuiteTitle]`  | will be replaced by the `rootSuiteTitle` setting  |
-| `[suiteFilename]`   | will be replaced by the filename of the spec file |
-| `[suiteName]`       | will be replaced by the name the first test suite |
-| `[hash]`            | will be replaced by MD5 hash of test results XML. |
+| placeholder         | output                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| `[testsuitesTitle]` | will be replaced by the `testsuitesTitle` setting                                        |
+| `[rootSuiteTitle]`  | will be replaced by the `rootSuiteTitle` setting                                         |
+| `[suiteFilename]`   | will be replaced by the filename of the spec file, auto remove .cy.js from the file name |
+| `[suiteName]`       | will be replaced by the name the first test suite                                        |
+| `[hash]`            | will be replaced by MD5 hash of test results XML.                                        |
 
 ### 2. Cypress configuration
 
-Inside cypress.config.js file:
+#### 2.1 Inside `cypress.config.js`
+
+This example shows how to install the plugin for e2e testing type. Read Cypress configuration docs for further info.
 
 ```javascript
-// cypress.config.js
 const { defineConfig } = require('cypress')
 module.exports = defineConfig({
+	deleteVideoOnPass: true,
+	betterRetries: true,
 	reporter: 'cypress-xray-junit-reporter',
 	reporterOptions: {
 		mochaFile: './report/[suiteName].xml',
@@ -87,22 +91,23 @@ module.exports = defineConfig({
 })
 ```
 
-Note: This example shows how to install the plugin for e2e testing type. Read Cypress configuration docs for further info.
+#### 2.2 Inside `cypress/support/e2e.js`
 
 At the top of your support file (usually cypress/support/e2e.js for e2e testing type):
 
 ```javascript
-// cypress/support/e2e.js
 import 'cypress-xray-junit-reporter/support'
 ```
 
 ### 3. Setting up your jiraKeys
 
-```shell
+`cypress/e2e/myFirstTest.cy.js`
+
+```javascript
 describe('My First Test', () => {
-  it('Does not do much!', {jiraKey:"CALC-1234"}, () => {
-    expect(true).to.equal(true);
-  })
+	it('Does not do much!', { jiraKey: 'CALC-1234' }, () => {
+		expect(true).to.equal(true)
+	})
 })
 ```
 
@@ -116,7 +121,7 @@ npx cypress run
 
 Report file generated at '<Cypress_project_root>/cypress/results'.
 
-"my-test-output-828a1c4885dc687b1a19e11e24b9437e.xml"
+`my-test-output-828a1c4885dc687b1a19e11e24b9437e.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -189,3 +194,261 @@ You can also configure the `testsuites.name` attribute by setting `reporterOptio
 | jenkinsClassnamePrefix         | `undefined`        | if set, adds a prefix to a classname when running in `jenkinsMode`                             |
 | outputs                        | `false`            | if set to true, will include console output and console error output into XML                  |
 | toConsole                      | `false`            | if set to true, the produced XML will be logged to the console                                 |
+
+## Results
+
+### Correct configuration
+
+**Description**  
+No testCase is skipped or pending, and every testCase has a jiraKey configured correctly.
+
+```shell
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    testSuite 2
+      √ testCase 2.1
+      √ testCase 2.2
+    testSuite 3
+      √ testCase 3.1
+      √ testCase 3.2
+
+ 4 passing (475ms)
+
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information...
+
+    〰 Founded one testsuite(s), keep scraping..
+      〰 Analyzing 1st testsuite: testSuite 1
+      🔍 Looking for testsuite or testcase...
+
+      〰 Founded two testsuite(s), keep scraping..
+        〰 Analyzing 2nd testsuite: testSuite 2
+        🔍 Looking for testsuite or testcase...
+          〰 Properly analyzed 1st testcase: testCase 2.1
+          〰 Properly analyzed 2nd testcase: testCase 2.2
+        ✔  Successfully analyzed two testcase(s)
+        〰 End of testsuite: testSuite 2
+
+        〰 Analyzing 3rd testsuite: testSuite 3
+        🔍 Looking for testsuite or testcase...
+          〰 Properly analyzed 1st testcase: testCase 3.1
+          〰 Properly analyzed 2nd testcase: testCase 3.2
+        ✔  Successfully analyzed two testcase(s)
+        〰 End of testsuite: testSuite 3
+
+      〰 End of testsuite: testSuite 1
+
+    ------------------------------------
+    All suites has been parsed correctly!
+
+====================================================================================================
+```
+
+### Missing jiraKeys
+
+**Description**  
+Jira keys are missing in testCase 1.2 & testCase 1.3
+
+```shell
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    √ testCase 1.1
+    √ testCase 1.2
+    √ testCase 1.3
+
+ 3 passing (185ms)
+
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information...
+
+    〰 Founded one testsuite(s), keep scraping..
+      〰 Analyzing 1st testsuite: testSuite 1
+      🔍 Looking for testsuite or testcase...
+        〰 Properly analyzed 1st testcase: testCase 1.1
+        ⚠️ Missing jira key in testcase: testCase 1.2
+        〰 Skipping 2nd testcase: testCase 1.2
+        ⚠️ Missing jira key in testcase: testCase 1.3
+        〰 Skipping 3rd testcase: testCase 1.3
+      ✔  Successfully analyzed three testcase(s)
+      ❗ Missing jira key in at least one testcase
+      〰 End of testsuite: testSuite 1
+
+  ------------------------------------
+  All suites has been parsed correctly!
+
+====================================================================================================
+```
+
+### Skipped or Pending tests
+
+**Description**
+Properties: secretName & region are mandatory
+
+```shell
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    1) testCase 1.1
+    - testCase 1.2
+    - testCase 1.3
+
+ 0 passing (398ms)
+  2 pending
+  1 failing
+
+  1) testSuite 1
+       testCase 1.1:
+     AssertionError: expected true to equal false
+      at Context.eval (webpack://plain-iqpfe-cypresstest/./cypress/e2e/tests/myFirstTest.cy.js:6:18)
+
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information...
+
+    〰 Founded one testsuite(s), keep scraping..
+      〰 Analyzing 1st testsuite: testSuite 1
+      🔍 Looking for testsuite or testcase...
+        〰 Properly analyzed 1st testcase: testCase 1.1
+        〰 Skipping 2nd testcase: testCase 1.2
+        〰 Skipping 3rd testcase: testCase 1.3
+      ✔  Successfully analyzed three testcase(s)
+      〰 End of testsuite: testSuite 1
+
+  ------------------------------------
+  All suites has been parsed correctly!
+
+  ====================================================================================================
+```
+
+### Module dependencies error
+
+**Description**  
+Try reinstall the latest version of the library
+
+```shell
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+"cypress-xray-junit-reporter" reporter not found
+Reporter not found! cypress-xray-junit-reporter
+
+  testSuite 1
+    √ testCase 1.1
+
+ 1 passing (142ms)
+
+====================================================================================================
+```
+
+## Extra Features
+
+Set them as other cypress options inside the `cypress.config.js`:
+
+```javascript
+const { defineConfig } = require('cypress')
+module.exports = defineConfig({
+	deleteVideoOnPass: true,
+	betterRetries: true,
+})
+```
+
+### deleteVideoOnPass
+
+Deletes the videos of passed specs
+
+```bash
+====================================================================================================
+
+Test-Run "myFirstTest": SUCCESS!
+Deleting video output
+
+====================================================================================================
+```
+
+### betterRetries
+
+Cypress doesn't automatically logs **retries errors** but log only the last one.  
+ In some cases you need to know the error on each attempt because it can change.  
+**Before betterRetries:**
+
+```bash
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    1) testCase 1.1
+
+ 0 passing (1s)
+  1 failing
+
+  1) testSuite 1
+       testCase 1.1:
+     AssertionError: expected true to equal false
+      at Context.eval (webpack://plain-iqpfe-cypresstest/./cypress/e2e/tests/myFirstTest.cy.js:6:18)
+
+
+====================================================================================================
+```
+
+**After betterRetries:**
+
+```bash
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    (Attempt 1 of 3) testCase 1.1
+    AssertionError: expected true to equal false
+    (Attempt 2 of 3) testCase 1.1
+    AssertionError: expected true to equal false
+    1) testCase 1.1
+    (Attempt 3 of 3) testCase 1.1
+
+ 0 passing (1s)
+  1 failing
+
+  1) testSuite 1
+       testCase 1.1:
+     AssertionError: expected true to equal false
+      at Context.eval (webpack://plain-iqpfe-cypresstest/./cypress/e2e/tests/myFirstTest.cy.js:6:18)
+
+
+====================================================================================================
+```
+
+## THE JOB IS DONE!
+
+Happy testing to everyone!
+
+ALEC-JS
+
+<h3 align="center">
+🙌 Donate to support my work & further development! 🙌
+</h3>
+
+<h3 align="center">
+  <a href="https://paypal.me/AlecMestroni?country.x=IT&locale.x=it_IT">
+    <img src="https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/badge.svg" width="111" align="center" />
+  </a>
+</h3>

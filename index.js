@@ -10,8 +10,8 @@ const mkdirp = require('mkdirp');
 const md5 = require('md5');
 const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
-const { encode } = require('base64-arraybuffer')
 const chalk = require("chalk");
+const converter = require('number-to-words');
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
@@ -67,9 +67,9 @@ function updateOptionsForJenkinsMode(options) {
   if (options.useFullSuiteTitle === undefined) {
     options.useFullSuiteTitle = true;
   }
-  debug('jenkins mode - testCaseSwitchClassnameAndName', options.testCaseSwitchClassnameAndName);
-  if (options.testCaseSwitchClassnameAndName === undefined) {
-    options.testCaseSwitchClassnameAndName = true;
+  debug('jenkins mode - testcaseSwitchClassnameAndName', options.testcaseSwitchClassnameAndName);
+  if (options.testcaseSwitchClassnameAndName === undefined) {
+    options.testcaseSwitchClassnameAndName = true;
   }
   if (options.suiteTitleSeparatedBy === undefined) {
     options.suiteTitleSeparatedBy = '.';
@@ -166,31 +166,40 @@ function CypressXrayJunitReporter(runner, options) {
   }
   const processTests = (tests) => {
     let testcaseNum = 0
+    repeatWhitespace++
     tests.forEach((test) => {
+      testcaseNum++
       const err = test.err;
       if (test.state !== 'skipped' && test.state !== 'pending') {
-        findSuite(testsuiteNum).push(this.getTestcaseData(test, err));
+        const testCase = this.getTestcaseData(test, err);
+        if (missingJiraKey.includes(test.title)) {
+          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('⚠️  Missing jira key in testcase: ') + test.title)
+          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.magentaBright('Skipping ') + chalk.grey(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
+        } else {
+          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.green('Properly analyzed ') + chalk.yellow(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
+          findSuite(testsuiteNum).push(testCase)
+        }
+      } else {
+        console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.magentaBright('Skipping ') + chalk.grey(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
       }
-      testcaseNum++
     });
+    repeatWhitespace--
     if (missingJiraKey.length === 0) {
-      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔  Successfully analyzed ' + testcaseNum + ' testCase(s)'))
+      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔' + '  Successfully analyzed ' + converter.toWords(testcaseNum) + ' testcase(s)'))
     } else {
-      missingJiraKey.forEach((testTitle) => {
-        console.log(whitespace.repeat(repeatWhitespace) + '❌ Missing jira key in testcase: ' + testTitle)
-      })
-      missingJiraKey = []
+      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔' + '  Successfully analyzed ' + converter.toWords(testcaseNum) + ' testcase(s)'))
+      console.log(chalk.red(whitespace.repeat(repeatWhitespace) + '❗ Missing jira key in at least one testcase'))
     }
   };
   const whitespace = "  "
   let repeatWhitespace = 2
   let testsuiteNum = 0
   const processSuites = (suites) => {
-    console.log(whitespace.repeat(repeatWhitespace) + chalk.yellow('〰 Founded ' + suites.length + ' subSuite(s), keep scraping'))
+    console.log('\n' + chalk.grey(whitespace.repeat(repeatWhitespace) + '〰 Founded ' + chalk.yellow(converter.toWords(suites.length)) + ' testsuite(s),' + ' keep scraping..'))
     repeatWhitespace++
     suites.forEach((suite) => {
       testsuiteNum++
-      console.log('\n' + whitespace.repeat(repeatWhitespace) + chalk.white('〰 Analyzing #' + testsuiteNum + ' suite: ') + chalk.cyan(suite.title) + '\n' + whitespace.repeat(repeatWhitespace) + '🔍 Looking for a testCase')
+      console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.cyanBright('Analyzing ') + chalk.yellow(converter.toOrdinal(testsuiteNum)) + ' testsuite: ' + chalk.white(suite.title) + '\n' + whitespace.repeat(repeatWhitespace) + '🔍 Looking for testsuite or testcase...'))
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
       } else if (suite.tests.length && !suite.suites.length) {
@@ -201,15 +210,15 @@ function CypressXrayJunitReporter(runner, options) {
       } else {
         throw new Error('Config Error');
       }
-      console.log(whitespace.repeat(repeatWhitespace) + chalk.white('〰 End of suite: ') + chalk.cyan(suite.title))
+      console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 End of testsuite: ') + chalk.cyan(suite.title) + '\n')
     });
     repeatWhitespace--
 
   };
 
   function mapSuites(suite, testTotals) {
-    const suites = suite.suites.reduce((acc, subSuite) => {
-      const mappedSuites = mapSuites(subSuite, testTotals);
+    const suites = suite.suites.reduce((acc, testsuite) => {
+      const mappedSuites = mapSuites(testsuite, testTotals);
       if (mappedSuites) {
         acc.push(mappedSuites);
       }
@@ -257,13 +266,16 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._runner.on('end', function () {
     const rootSuite = mapSuites(this.runner.suite, testTotals);
-    console.log('\x1B[37m====================================================================================================\n')
-    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report\n'))
-    console.log(chalk.white('    ⏳ Retrieving suites information... '))
+    const separator = chalk.grey('\n====================================================================================================\n')
+
+    console.log(separator)
+    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report'))
+    console.log(chalk.white('  -------------------------------------------------\n'))
+    console.log(chalk.grey('    ⏳ Retrieving suites information... '))
     processSuites(rootSuite.suites)
-    this.flush(testsuites);
-    console.log(chalk.white('\n    All suites has been parsed correctly!\n'))
-    console.log('\n\x1B[37m====================================================================================================\n')
+    this.flush(testsuite);
+    console.log(chalk.white('  ------------------------------------'))
+    console.log(chalk.green('  All suites has been parsed correctly!'))
   }.bind(this));
 }
 
@@ -279,21 +291,27 @@ CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
     timestamp: this._Date.now(),
     tests: suite.tests.length
   };
-  const testSuite = { testsuite: [{ _attr: _attr }] };
+  const testsuite = { testsuite: [{ _attr: _attr }] };
 
   if (suite.file) {
-    testSuite.testsuite[0]._attr.file = suite.file;
+    if (suite.file.includes('\\')) {
+      testsuite.testsuite[0]._attr.file = suite.file.split('\\').pop().split('.')[0]
+    } else if (suite.file.includes('/')) {
+      testsuite.testsuite[0]._attr.file = suite.file.split('/').pop().split('.')[0]
+    } else {
+      testsuite.testsuite[0]._attr.file = suite.file
+    }
   }
 
   const properties = generateSuiteProperties(this._options);
 
   if (properties.length) {
-    testSuite.testsuite.push({
+    testsuite.testsuite.push({
       properties: properties
     });
   }
 
-  return testSuite;
+  return testsuite;
 };
 
 let missingJiraKey = []
@@ -364,8 +382,7 @@ function getScreen(test) {
 }
 
 function getBase64(path) {
-  const arrayBuffer = fs.readFileSync(path, { enconding: 'base64' })
-  return encode(arrayBuffer)
+  return fs.readFileSync(path, { encoding: 'base64' })
 }
 
 /**
@@ -378,7 +395,7 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   const xrayMode = this._options.xrayMode
   const attachScreenshot = this._options.attachScreenshot
   const jenkinsMode = this._options.jenkinsMode;
-  const flipClassAndName = this._options.testCaseSwitchClassnameAndName;
+  const flipClassAndName = this._options.testcaseSwitchClassnameAndName;
   const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
   const classname = stripAnsi(test.title);
   const testcase = {
