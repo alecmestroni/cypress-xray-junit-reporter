@@ -29,6 +29,6 @@ describe('Suite 0', { testIsolation: false }, () => {
 		})
 	})
 	it('0.1', { jiraKey: 'pippo1.1', retries: 1 }, () => {
-		expect(true).to.eq(true);
+		expect(true).to.eq(false);
 	})
 })

@@ -20,17 +20,17 @@ module.exports = (on, config) => {
 
     if (config.deleteVideoOnPassed) {
         on('after:spec', (spec, results) => {
-            if (results.video) {
-                // Do we have failures for any retry attempts?
-                if (!results.stats.failures && !results.stats.skipped) {
-                    // delete the video if the spec passed and no tests retried
-                    const separator = chalk.grey('\n====================================================================================================\n')
-                    console.log(separator)
-                    console.log(chalk.grey('Test-Run "' + chalk.cyan(spec.fileName) + '": ' + chalk.green("SUCCESS!") + '\nDeleting video output'))
-                    console.log(separator)
-                    fs.unlinkSync(results.video)
-                }
+            if (!results.video || results.stats.failures || results.stats.skipped) {
+                // No video available, nothing to delete
+                // Either failures or skipped tests, do not delete the video
+                return;
             }
+            // If we reached this point, the spec passed, and no tests failed or skipped
+            const separator = chalk.grey('\n====================================================================================================\n');
+            console.log(separator);
+            console.log(chalk.grey('Test-Run "' + chalk.cyan(spec.fileName) + '": ' + chalk.green("SUCCESS!") + '\nDeleting video output'));
+            console.log(separator);
+            fs.unlinkSync(results.video);
         })
     }
     return config;

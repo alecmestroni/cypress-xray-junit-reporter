@@ -273,7 +273,7 @@ function CypressXrayJunitReporter(runner, options) {
     console.log(chalk.white('  -------------------------------------------------\n'))
     console.log(chalk.grey('    ⏳ Retrieving suites information... '))
     processSuites(rootSuite.suites)
-    this.flush(testsuite);
+    this.flush(testsuites);
     console.log(chalk.white('  ------------------------------------'))
     console.log(chalk.green('  All suites has been parsed correctly!'))
   }.bind(this));

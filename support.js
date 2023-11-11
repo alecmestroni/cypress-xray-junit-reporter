@@ -1,26 +1,29 @@
 
 Cypress.on('test:after:run', (test, runnable) => {
     const sanitize = require('sanitize-filename');
-    let parentsArray = []
+
     if (test.state === 'failed') {
-        let path = `${Cypress.config('screenshotsFolder')}`
-        path = path.replace("\\", "/")
-        path += `/${Cypress.spec.name}/`
-        addParentPath(runnable)
-        const parents = parentsArray.toReversed().toString().replace(",", "")
-        path += parents
-        path += sanitize(test.title) + ' (failed).png'
-        test.screenshot = path
+        const path = buildScreenshotPath(test);
+        test.screenshot = path;
     }
 
-    function addParentPath(runnable) {
-        const title = runnable.parent.title
-        if (title) {
-            parentsArray.push(sanitize(runnable.parent.title) + ' -- ');
-            addParentPath(runnable.parent)
-        }
+    function buildScreenshotPath(test) {
+        let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.name}/`;
+        const parents = addParentsTitle(runnable);
+        path += parents;
+        path += sanitize(test.title) + ' (failed).png';
+        return path;
     }
-})
+
+    function addParentsTitle(runnable) {
+        const titles = [];
+        while (runnable.parent.title) {
+            titles.push(sanitize(runnable.parent.title) + ' -- ');
+            runnable = runnable.parent;
+        }
+        return titles.toReversed().join('').replace(/, /g, '');
+    }
+});
 
 if (!Cypress.config().isInteractive && Cypress.config().reporter !== 'spec' && Cypress.config().betterRetries) {
     afterEach(() => {
