@@ -5,16 +5,20 @@ module.exports = (on, config) => {
     // Expose plugin tasks
     if (config.betterRetries) {
         on("task", {
-            logYellow(param) {
-                const log = Array.isArray(param) ? param : [param]
-                console.log(chalk.yellow(log))
+            logColoredText(args) {
+                const color = args.color;
+                const text = args.text;
+                // Check if the specified color is a valid Chalk color
+                if (!chalk[color] || !color) {
+                    console.log(color)
+                    console.error('Invalid or missing color!');
+                    throw new Error('Invalid or missing color!');
+                }
+                // Log the colored text to the console
+                const print = Array.isArray(text) ? text : [text]
+                console.log(chalk[color](print));
                 return null
             },
-            logRed(param) {
-                const log = Array.isArray(param) ? param : [param]
-                console.log(chalk.red(log))
-                return null
-            }
         });
     }
 
