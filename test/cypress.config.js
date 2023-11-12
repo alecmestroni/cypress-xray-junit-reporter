@@ -1,12 +1,14 @@
 const { defineConfig } = require("cypress");
 
 module.exports = defineConfig({
+  betterRetries: true,
+  deleteVideoOnPassed: true,
   video: false,
   reporter: 'cypress-multi-reporters',
   reporterOptions: {
     reporterEnabled: 'spec, cypress-xray-junit-reporter',
     cypressXrayJunitReporterReporterOptions: {
-      mochaFile: './report/[suiteName].xml',
+      mochaFile: './report/[suiteFilename].xml',
       useFullSuiteTitle: false,
       jenkinsMode: true,
       xrayMode: true,

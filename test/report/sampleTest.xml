@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.154" tests="9" failures="0">
+  <testsuite name="Root Suite" timestamp="2023-11-12T21:36:20" tests="0" file="sampleTest" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Suite 0" timestamp="2023-11-12T21:36:20" tests="1" time="0.135" failures="0">
+    <testcase name="testCase 0.1" time="0.018" classname="Suite 0">
+      <properties>
+        <property name="test_key" value="pippo1.2"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="Suite 1" timestamp="2023-11-12T21:36:20" tests="1" time="0.016" failures="0">
+    <testcase name="testCase 1.1" time="0.006" classname="Suite 0 Suite 1">
+      <properties>
+        <property name="test_key" value="pippo1.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="Suite 2" timestamp="2023-11-12T21:36:20" tests="3" time="0.037" failures="0">
+  </testsuite>
+  <testsuite name="Suite 3" timestamp="2023-11-12T21:36:20" tests="2" time="0.026" failures="0">
+    <testcase name="testCase 3.1" time="0.006" classname="Suite 0 Suite 3">
+      <properties>
+        <property name="test_key" value="pippo1.1"/>
+      </properties>
+    </testcase>
+    <testcase name="testCase 3.1" time="0.007" classname="Suite 0 Suite 3">
+      <properties>
+        <property name="test_key" value="pippo1.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="Suite 4" timestamp="2023-11-12T21:36:20" tests="1" time="0.014" failures="0">
+    <testcase name="testCase 4.1" time="0.004" classname="Suite 0 Suite 4">
+      <properties>
+        <property name="test_key" value="pippo1.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="Suite 4" timestamp="2023-11-12T21:36:20" tests="1" time="0.018" failures="0">
+    <testcase name="testCase 4.1" time="0.004" classname="Suite 0 Suite 4">
+      <properties>
+        <property name="test_key" value="pippo1.2"/>
+      </properties>
+    </testcase>
+  </testsuite>
+</testsuites>
