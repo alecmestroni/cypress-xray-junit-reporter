@@ -32,6 +32,10 @@ XML cypress custom reporter based on Mocha to be compatible with:
 
 See [here](https://www.npmjs.com/package/cypress-xray-junit-reporter#extra-features) for more information
 
+## Execution
+
+![recording](https://raw.githubusercontent.com/alecmestroni/cypress-xray-junit-reporter/main/img/recording.mp4)
+
 ## Install
 
 ```shell
