@@ -1,3 +1,4 @@
+// Using strict mode is a suggested practice because it helps to write more robust code
 'use strict';
 
 const xml = require('xml');
@@ -10,12 +11,12 @@ const mkdirp = require('mkdirp');
 const md5 = require('md5');
 const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
-const chalk = require("chalk");
-const converter = require('number-to-words');
+const logMessages = require('./logMessages');
+const { v4: uuidv4 } = require('uuid');
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
-const Date = global.Date;
+const startTime = global.Date;
 
 // A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
 // regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
@@ -25,6 +26,11 @@ const testTotals = {
   registered: 0,
   skipped: 0,
 };
+
+// number of whitespace indentation characters
+let wsNum = 0
+
+let testOrdered = [];
 
 function findReporterOptions(options) {
   debug('Checking for options in', options);
@@ -75,6 +81,7 @@ function updateOptionsForJenkinsMode(options) {
     options.suiteTitleSeparatedBy = '.';
   }
 }
+
 function getSetting(value, defaultVal) {
   if (value !== undefined) {
     return value;
@@ -152,56 +159,63 @@ function CypressXrayJunitReporter(runner, options) {
   this._runner = runner;
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
   this._antId = 0;
-  this._Date = (options?.Date) || Date;
+  this._Date = (options?.Date) || startTime;
 
   const testsuites = [];
   this._testsuites = testsuites;
 
-  function findSuite(testsuiteNum) {
-    if (testsuiteNum === 'last') {
+
+  function findSuite(suiteTitle, suiteNumber) {
+    if (typeof suiteTitle === 'string' && typeof suiteNumber === 'number') {
+      // control on the name of the passed suite
+      if (testsuites[suiteNumber]?.testsuite[0]._attr.name === suiteTitle) {
+        // if it corresponds to the passed suite title, return it
+        return testsuites[suiteNumber]?.testsuite;
+      } else {
+        throw new Error('Suite counting error: suite title not corresponding.\nExpect: ' + suiteTitle + ', got: ' + testsuites[suiteNumber]?.testsuite[0]._attr.name);
+      }
+    } else if (suiteNumber === undefined) {
       return testsuites[testsuites.length - 1].testsuite;
     } else {
-      return testsuites[testsuiteNum]?.testsuite;
+      throw new Error('Invalid argument passed to findSuite\nPassed: ' + suiteTitle + ' & ' + suiteNumber);
     }
   }
+
   const processTests = (tests) => {
-    let testcaseNum = 0
-    repeatWhitespace++
+    wsNum++;
+
     tests.forEach((test) => {
-      testcaseNum++
       const err = test.err;
       if (test.state !== 'skipped' && test.state !== 'pending') {
         const testCase = this.getTestcaseData(test, err);
+
         if (missingJiraKey.includes(test.title)) {
-          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('⚠️  Missing jira key in testcase: ') + test.title)
-          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.magentaBright('Skipping ') + chalk.grey(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
+          logMessages.warning(wsNum, `Missing jira key in testcase: ${test.title}`);
+          logMessages.skippedTestcase(wsNum, test.title);
         } else {
-          console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.green('Properly analyzed ') + chalk.yellow(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
-          findSuite(testsuiteNum).push(testCase)
+          logMessages.analyzedTestcase(wsNum, test.title);
+          findSuite(test.parent.title, testOrdered.indexOf(test.parent.uuid)).push(testCase);
         }
       } else {
-        console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.magentaBright('Skipping ') + chalk.grey(converter.toOrdinal(testcaseNum)) + ' testcase: ' + chalk.white(test.title)))
+        logMessages.skippedTestcase(wsNum, test.title);
       }
     });
-    repeatWhitespace--
-    if (missingJiraKey.length === 0) {
-      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔' + '  Successfully analyzed ' + converter.toWords(testcaseNum) + ' testcase(s)'))
-    } else {
-      console.log(chalk.green(whitespace.repeat(repeatWhitespace) + '✔' + '  Successfully analyzed ' + converter.toWords(testcaseNum) + ' testcase(s)'))
-      console.log(chalk.red(whitespace.repeat(repeatWhitespace) + '❗ Missing jira key in at least one testcase'))
+    wsNum--;
+
+    if (missingJiraKey.length > 0) {
+      logMessages.error(wsNum)
+      missingJiraKey = []
     }
   };
-  const whitespace = "  "
-  let repeatWhitespace = 2
   let testsuiteNum = 0
   const processSuites = (suites) => {
-    console.log('\n' + chalk.grey(whitespace.repeat(repeatWhitespace) + '〰 Founded ' + chalk.yellow(converter.toWords(suites.length)) + ' testsuite(s),' + ' keep scraping..'))
-    repeatWhitespace++
+    logMessages.foundingSuite(wsNum, suites.length)
+    wsNum++
     suites.forEach((suite) => {
-      testsuiteNum++
-      console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 ' + chalk.cyanBright('Analyzing ') + chalk.yellow(converter.toOrdinal(testsuiteNum)) + ' testsuite: ' + chalk.white(suite.title) + '\n' + whitespace.repeat(repeatWhitespace) + '🔍 Looking for testsuite or testcase...'))
+      logMessages.analyzingSuite(wsNum, suite.title)
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
+        testsuiteNum++
       } else if (suite.tests.length && !suite.suites.length) {
         processTests(suite.tests);
       } else if (suite.suites.length && suite.tests.length) {
@@ -210,9 +224,10 @@ function CypressXrayJunitReporter(runner, options) {
       } else {
         throw new Error('Config Error');
       }
-      console.log(whitespace.repeat(repeatWhitespace) + chalk.grey('〰 End of testsuite: ') + chalk.cyan(suite.title) + '\n')
+      logMessages.endSuite(wsNum, suite.title)
+
     });
-    repeatWhitespace--
+    wsNum--
 
   };
 
@@ -241,18 +256,22 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._onSuiteBegin = function (suite) {
     if (!isInvalidSuite(suite)) {
+      const uuidSuite = uuidv4();;
+      suite.uuid = uuidSuite;
+      testOrdered.push(uuidSuite);
       testsuites.push(this.getTestsuiteData(suite));
     }
   };
 
   this._runner.on('suite', function (suite) {
+
     // allow tests to mock _onSuiteBegin
     return this._onSuiteBegin(suite);
   }.bind(this));
 
   this._onSuiteEnd = function (suite) {
-    if (!isInvalidSuite(suite)) {
-      const testsuite = findSuite('last');
+    if (!isInvalidSuite(suite) && suite.tests.length !== 0) {
+      const testsuite = findSuite(suite.title, testOrdered.indexOf(suite.uuid));
       if (testsuite) {
         const start = testsuite[0]._attr.timestamp;
         testsuite[0]._attr.time = this._Date.now() - start;
@@ -266,20 +285,16 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._runner.on('end', function () {
     const rootSuite = mapSuites(this.runner.suite, testTotals);
-    const separator = chalk.grey('\n====================================================================================================\n')
-
-    console.log(separator)
-    console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report'))
-    console.log(chalk.white('  -------------------------------------------------\n'))
-    console.log(chalk.grey('    ⏳ Retrieving suites information... '))
+    logMessages.startingPlugin(wsNum)
     processSuites(rootSuite.suites)
+    logMessages.endPlugin(wsNum)
     this.flush(testsuites);
-    console.log(chalk.white('  ------------------------------------'))
-    console.log(chalk.green('  All suites has been parsed correctly!'))
+
   }.bind(this));
 }
 
 /**
+ 
  * Produces an xml node for a test suite
  * @param  {Object} suite - a test suite
  * @return {Object}       - an object representing the xml node
@@ -477,6 +492,14 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   return testcase;
 };
 
+function countTest(item, array) {
+  // Use the reduce() method to count the occurrences of the item property
+  return array.reduce((count, element) => {
+    // Increment the count if the object has the item property
+    return count + (item in element ? 1 : 0);
+  }, 0);
+}
+
 /**
  * @param {string} input
  * @returns {string} without invalid characters
@@ -542,7 +565,7 @@ CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
   let totalTests = 0;
   const stats = this._runner.stats;
   const hasProperties = (!!this._options.properties)
-  const Date = this._Date;
+  const startTime = this._Date;
 
   testsuites.forEach(function (suite) {
     const _suiteAttr = suite.testsuite[0]._attr;
@@ -553,17 +576,15 @@ CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
 
     // suiteTime has unrounded time as a Number of milliseconds
     const suiteTime = _suiteAttr.time;
-
     _suiteAttr.time = (suiteTime / 1000 || 0).toFixed(3);
-    _suiteAttr.timestamp = new Date(_suiteAttr.timestamp).toISOString().slice(0, -5);
+    _suiteAttr.timestamp = new startTime(_suiteAttr.timestamp).toISOString().slice(0, -5);
     _suiteAttr.failures = 0;
     _suiteAttr.skipped = 0;
 
     _cases.forEach(function (testcase) {
-      const lastNode = testcase.testcase[testcase.testcase.length - 1];
 
-      _suiteAttr.skipped += Number('skipped' in lastNode);
-      _suiteAttr.failures += Number('failure' in lastNode);
+      _suiteAttr.skipped += countTest('skipped', testcase.testcase)
+      _suiteAttr.failures += countTest('failure', testcase.testcase)
       if (typeof testcase.testcase[0]._attr.time === 'number') {
         testcase.testcase[0]._attr.time = testcase.testcase[0]._attr.time.toFixed(3);
       }
