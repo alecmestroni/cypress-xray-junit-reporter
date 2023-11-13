@@ -184,20 +184,23 @@ You can also configure the `testsuites.name` attribute by setting `reporterOptio
 
 ## Complete reporterOptions list
 
-| Parameter                      | Default            | Effect                                                                                         |
-| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
-| mochaFile                      | `test-results.xml` | configures the file-name of the report, compatible with placeholders (see next section)        |
-| xrayMode                       | `true`             | if set to true, the XML report will contains the jiraKey property in XRAY format               |
-| attachScreenshot               | `false`            | if set to true, the XML report will contains the test failure screenshot in XRAY format        |
-| testCaseSwitchClassnameAndName | `false`            | if set to true, to switch name and classname values                                            |
-| testsuitesTitle                | `"Mocha Tests"`    | if set, changes the name for the XML testsuites tag, can be used a mochaFile name placeholder  |
-| rootSuiteTitle                 | `"Root Suite"`     | if set, changes the name for the XML rootsuites tag, can be used a mochaFile name placeholder  |
-| useFullSuiteTitle              | `false`            | if set to true, nested suites' titles will show the suite lineage                              |
-| suiteTitleSeparatedBy          | ` ` (space)        | the character to use to separate nested suite titles (defaults to ' ', '.' if in jenkins mode) |
-| jenkinsMode                    | `false`            | if set to true, will return XML that will display nice results in Jenkins                      |
-| jenkinsClassnamePrefix         | `undefined`        | if set, adds a prefix to a classname when running in `jenkinsMode`                             |
-| outputs                        | `false`            | if set to true, will include console output and console error output into XML                  |
-| toConsole                      | `false`            | if set to true, the produced XML will be logged to the console                                 |
+Certainly, here's a refined version:
+
+| Configuration Option             | Default Value      | Description                                                                                          |
+| -------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `mochaFile`                      | `test-results.xml` | Specifies the file name for the report, compatible with placeholders (see the next section).         |
+| `xrayMode`                       | `true`             | When enabled, includes the `jiraKey` property in the XML report in XRAY format.                      |
+| `attachScreenshot`               | `false`            | When enabled, embeds test failure screenshots in the XML report in XRAY format.                      |
+| `shortenLogMode`                 | `false`            | When enabled, condenses logs to essential information only.                                          |
+| `testCaseSwitchClassnameAndName` | `false`            | When enabled, switches the order of name and classname values.                                       |
+| `testsuitesTitle`                | `"Mocha Tests"`    | Customizes the name for the XML `testsuites` tag, serving as a placeholder for `mochaFile` names.    |
+| `rootSuiteTitle`                 | `"Root Suite"`     | Customizes the name for the XML `rootsuites` tag, serving as a placeholder for `mochaFile` names.    |
+| `useFullSuiteTitle`              | `false`            | If `true`, displays nested suite titles with the entire suite lineage.                               |
+| `outputs`                        | `false`            | If `true`, includes console output and console error output in the XML report.                       |
+| `toConsole`                      | `false`            | If `true`, logs the produced XML to the console.                                                     |
+| `jenkinsMode`                    | `false`            | When enabled, generates XML for improved display in Jenkins.                                         |
+| `jenkinsClassnamePrefix`         | `undefined`        | Adds a prefix to a classname when running in `jenkinsMode`.                                          |
+| `suiteTitleSeparatedBy`          | ` ` (space)        | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode). |
 
 ## Results
 
@@ -300,7 +303,7 @@ Jira keys are missing in testCase 1.2 & testCase 1.3
 ### Skipped or Pending tests
 
 **Description**
-Properties: secretName & region are mandatory
+Skipping or Pending tests will be skipped
 
 ```shell
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -341,6 +344,42 @@ Properties: secretName & region are mandatory
   All suites has been parsed correctly!
 
   ====================================================================================================
+```
+
+### Shorten log mode
+
+**Description**  
+When the shortenLogMode option is enabled (only errors will be printed)
+
+```shell
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  testSuite 1
+    testSuite 2
+      √ testCase 2.1
+      √ testCase 2.2
+    testSuite 3
+      √ testCase 3.1
+      √ testCase 3.2
+
+ 4 passing (475ms)
+
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information from Root Suite...
+          ⚠️  Missing jira key in testcase: testCase 2.1
+          ⚠️  Missing jira key in testcase: testCase 2.2
+          ⚠️  Missing jira key in testcase: testCase 2.3
+        ‼ Missing jira key in at least one testcase, it/them will be skipped
+  ------------------------------------
+  All suites have been parsed correctly!
+
+====================================================================================================
 ```
 
 ### Module dependencies error

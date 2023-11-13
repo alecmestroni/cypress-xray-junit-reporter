@@ -13,6 +13,7 @@ module.exports = defineConfig({
       jenkinsMode: true,
       xrayMode: true,
       attachScreenshot: true,
+      shortenLogMode: true,
     },
   },
   e2e: {

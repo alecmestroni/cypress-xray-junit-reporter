@@ -57,6 +57,7 @@ function configureDefaults(options) {
   config.mochaFile = getSetting(config.mochaFile, 'test-results.xml');
   config.jenkinsMode = getSetting(config.jenkinsMode, false);
   config.xrayMode = getSetting(config.xrayMode, true);
+  config.shortenLogMode = getSetting(config.shortenLogMode, false);
   config.attachScreenshot = getSetting(config.attachScreenshot, false);
   config.toConsole = !!config.toConsole;
   config.rootSuiteTitle = config.rootSuiteTitle || 'Root Suite';
@@ -156,6 +157,7 @@ function CypressXrayJunitReporter(runner, options) {
   testTotals.registered = 0;
   testTotals.skipped = 0;
   this._options = configureDefaults(options);
+  const shortenLogMode = this._options.shortenLogMode
   this._runner = runner;
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
   this._antId = 0;
@@ -191,14 +193,21 @@ function CypressXrayJunitReporter(runner, options) {
 
         if (missingJiraKey.includes(test.title)) {
           logMessages.warning(wsNum, `Missing jira key in testcase: ${test.title}`);
-          logMessages.skippedTestcase(wsNum, test.title);
+          if (!shortenLogMode) {
+            logMessages.skippedTestcase(wsNum, test.title);
+          }
         } else {
-          logMessages.analyzedTestcase(wsNum, test.title);
+          if (!shortenLogMode) {
+            logMessages.analyzedTestcase(wsNum, test.title);
+          }
           findSuite(test.parent.title, testOrdered.indexOf(test.parent.uuid)).push(testCase);
         }
-      } else {
+      } else if (!shortenLogMode) {
         logMessages.skippedTestcase(wsNum, test.title);
+      } else {
+        return
       }
+
     });
     wsNum--;
 
@@ -209,10 +218,14 @@ function CypressXrayJunitReporter(runner, options) {
   };
   let testsuiteNum = 0
   const processSuites = (suites) => {
-    logMessages.foundingSuite(wsNum, suites.length)
+    if (!shortenLogMode) {
+      logMessages.foundingSuite(wsNum, suites.length)
+    }
     wsNum++
     suites.forEach((suite) => {
-      logMessages.analyzingSuite(wsNum, suite.title)
+      if (!shortenLogMode) {
+        logMessages.analyzingSuite(wsNum, suite.title)
+      }
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
         testsuiteNum++
@@ -224,8 +237,9 @@ function CypressXrayJunitReporter(runner, options) {
       } else {
         throw new Error('Config Error');
       }
-      logMessages.endSuite(wsNum, suite.title)
-
+      if (!shortenLogMode) {
+        logMessages.endSuite(wsNum, suite.title)
+      }
     });
     wsNum--
 
