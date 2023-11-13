@@ -3,6 +3,7 @@
   "version": "0.6.3",
   "description": "Cypress Reporter | Produces XRay compatible JUnit-style XML test results for cypress capable to attach screenshot on test failures",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {},
   "repository": {
     "type": "git",

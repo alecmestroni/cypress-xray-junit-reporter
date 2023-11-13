@@ -27,7 +27,7 @@ const logMessages = {
         console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Properly analyzed testcase:')} ${chalk.white(title)}`);
     },
     error: (suitesNum,) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.red('‼ Missing jira key in at least one testcase, it will be skipped')}`);
+        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.red('‼ Missing jira key in at least one testcase, it/them will be skipped')}`);
     },
     foundingSuite: (suitesNum, suitesQuantity) => {
         console.log(`\n${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Founded ' + chalk.yellow(converter.toWords(suitesQuantity)) + ' testsuite(s), keep scraping..')}`);
