@@ -13,31 +13,58 @@ const logMessages = {
         console.log(chalk.white('    ⏳ Retrieving suites information from Root Suite... '));
     },
     endPlugin: () => {
-        console.log('  ------------------------------------');
-        console.log(chalk.green('  All suites have been parsed correctly!\n'));
+        console.log(`\n${whitespace.repeat(tabNum)}------------------------------------`);
+        console.log(`${whitespace.repeat(tabNum)}${chalk.green('All suites have been parsed correctly!\n')}`);
         console.log(`${separator}`);
     },
-    warning: (suitesNum, message) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('⚠️  ' + message)}`);
+    warning: (shortenLogMode, suitesNum, message) => {
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('⚠️  ' + message)}`);
+        } else {
+            console.log(`${whitespace.repeat(tabNum)}${chalk.black('⚠️  ' + message)}`);
+        }
     },
-    skippedTestcase: (suitesNum, title) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Skipping testcase: ')} ${chalk.white(title)}`);
+    missingError: (shortenLogMode, suitesNum,) => {
+        const message = '‼ Missing jira key in at least one testcase'
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.red(message)}`);
+        } else {
+            console.log(`${whitespace.repeat(tabNum)}${chalk.red(message)}`);
+        }
     },
-    analyzedTestcase: (suitesNum, title) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Properly analyzed testcase:')} ${chalk.white(title)}`);
+    skippedError: (shortenLogMode, testArray) => {
+        let wsNum
+        if (shortenLogMode) {
+            wsNum = tabNum
+            const message = `‼ Skipping testcases:\n${whitespace.repeat(wsNum)}` + chalk.cyan('- ' + testArray.join(`,\n${whitespace.repeat(wsNum)}- `))
+            console.log(`${whitespace.repeat(wsNum)}${chalk.red(message)}`);
+        }
     },
-    error: (suitesNum,) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.red('‼ Missing jira key in at least one testcase, it/them will be skipped')}`);
+    skippedTestcase: (shortenLogMode, suitesNum, title) => {
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Skipping testcase: ')} ${chalk.white(title)}`);
+        }
     },
-    foundingSuite: (suitesNum, suitesQuantity) => {
-        console.log(`\n${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Founded ' + chalk.yellow(converter.toWords(suitesQuantity)) + ' testsuite(s), keep scraping..')}`);
+    analyzedTestcase: (shortenLogMode, suitesNum, title) => {
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Properly analyzed testcase:')} ${chalk.white(title)}`);
+        }
     },
-    analyzingSuite: (suitesNum, title) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.cyanBright('〰 Analyzing testsuite: ') + chalk.white(title)}`);
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.white('🔍 Looking for testsuite or testcase...')}`);
+    foundingSuite: (shortenLogMode, suitesNum, suitesQuantity) => {
+        if (!shortenLogMode) {
+            console.log(`\n${whitespace.repeat(suitesNum + tabNum)}${chalk.black('〰 Founded ' + chalk.yellow(converter.toWords(suitesQuantity)) + ' testsuite(s), keep scraping..')}`);
+        }
     },
-    endSuite: (suitesNum, title) => {
-        console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.green('✔ Successfully analyzed suite:')} ${chalk.white(title)}\n`)
+    analyzingSuite: (shortenLogMode, suitesNum, title) => {
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.cyanBright('〰 Analyzing testsuite: ') + chalk.white(title)}`);
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.white('🔍 Looking for testsuite or testcase...')}`);
+        }
+    },
+    endSuite: (shortenLogMode, suitesNum, title) => {
+        if (!shortenLogMode) {
+            console.log(`${whitespace.repeat(suitesNum + tabNum)}${chalk.green('✔ Successfully analyzed suite:')} ${chalk.white(title)}\n`)
+        }
     },
 };
 

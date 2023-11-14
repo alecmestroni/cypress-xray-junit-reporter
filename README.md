@@ -32,7 +32,7 @@ XML cypress custom reporter based on Mocha to be compatible with:
 
 See [here](https://www.npmjs.com/package/cypress-xray-junit-reporter#extra-features) for more information
 
-## Execution
+## Video reporter execution
 
 https://github.com/alecmestroni/cypress-xray-junit-reporter/assets/62354989/4e8b1067-59bd-48ef-9f1a-183cfb049864
 
@@ -182,34 +182,38 @@ Here is an example of the XML output when using the `testCaseSwitchClassnameAndN
 
 You can also configure the `testsuites.name` attribute by setting `reporterOptions.testsuitesTitle` and the root suite's `name` attribute by setting `reporterOptions.rootSuiteTitle`.
 
-## Complete reporterOptions list
+## Main reporterOptions list
 
-Certainly, here's a refined version:
+| Configuration Option | Default Value      | Description                                                                                  |
+| -------------------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| `mochaFile`          | `test-results.xml` | Specifies the file name for the report, compatible with placeholders (see the next section). |
+| `xrayMode`           | `true`             | When enabled, includes the `jiraKey` property in the XML report in XRAY format.              |
+| `attachScreenshot`   | `false`            | When enabled, embeds test failure screenshots in the XML report in XRAY format.              |
+| `shortenLogMode`     | `false`            | When enabled, condenses logs to essential information only.                                  |
 
-| Configuration Option             | Default Value      | Description                                                                                          |
-| -------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
-| `mochaFile`                      | `test-results.xml` | Specifies the file name for the report, compatible with placeholders (see the next section).         |
-| `xrayMode`                       | `true`             | When enabled, includes the `jiraKey` property in the XML report in XRAY format.                      |
-| `attachScreenshot`               | `false`            | When enabled, embeds test failure screenshots in the XML report in XRAY format.                      |
-| `shortenLogMode`                 | `false`            | When enabled, condenses logs to essential information only.                                          |
-| `testCaseSwitchClassnameAndName` | `false`            | When enabled, switches the order of name and classname values.                                       |
-| `testsuitesTitle`                | `"Mocha Tests"`    | Customizes the name for the XML `testsuites` tag, serving as a placeholder for `mochaFile` names.    |
-| `rootSuiteTitle`                 | `"Root Suite"`     | Customizes the name for the XML `rootsuites` tag, serving as a placeholder for `mochaFile` names.    |
-| `useFullSuiteTitle`              | `false`            | If `true`, displays nested suite titles with the entire suite lineage.                               |
-| `outputs`                        | `false`            | If `true`, includes console output and console error output in the XML report.                       |
-| `toConsole`                      | `false`            | If `true`, logs the produced XML to the console.                                                     |
-| `jenkinsMode`                    | `false`            | When enabled, generates XML for improved display in Jenkins.                                         |
-| `jenkinsClassnamePrefix`         | `undefined`        | Adds a prefix to a classname when running in `jenkinsMode`.                                          |
-| `suiteTitleSeparatedBy`          | ` ` (space)        | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode). |
+## Extra reporterOptions list (Advanced options)
 
-## Results
+| Configuration Option             | Default Value   | Description                                                                                          |
+| -------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `testCaseSwitchClassnameAndName` | `false`         | When enabled, switches the order of name and classname values.                                       |
+| `testsuitesTitle`                | `"Mocha Tests"` | Customizes the name for the XML `testsuites` tag, serving as a placeholder for `mochaFile` names.    |
+| `rootSuiteTitle`                 | `"Root Suite"`  | Customizes the name for the XML `rootsuites` tag, serving as a placeholder for `mochaFile` names.    |
+| `useFullSuiteTitle`              | `false`         | If `true`, displays nested suite titles with the entire suite lineage.                               |
+| `outputs`                        | `false`         | If `true`, includes console output and console error output in the XML report.                       |
+| `toConsole`                      | `false`         | If `true`, logs the produced XML to the console.                                                     |
+| `jenkinsMode`                    | `false`         | When enabled, generates XML for improved display in Jenkins.                                         |
+| `jenkinsClassnamePrefix`         | `undefined`     | Adds a prefix to a classname when running in `jenkinsMode`.                                          |
+| `suiteTitleSeparatedBy`          | ` ` (space)     | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode). |
 
-### Correct configuration
+## Logged Results
+
+### Successful configuration
 
 **Description**  
-No testCase is skipped or pending, and every testCase has a jiraKey configured correctly.
+All test cases are executed without any skips or pending status. Additionally, each test case is appropriately configured with the correct Jira key.  
+**Cypress result:**
 
-```shell
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)
@@ -224,6 +228,12 @@ No testCase is skipped or pending, and every testCase has a jiraKey configured c
 
  4 passing (475ms)
 
+────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+**shortenLogMode disabled**
+
+```
 ====================================================================================================
 
   Cypress Xray Junit Reporter | Creating XML report
@@ -232,21 +242,21 @@ No testCase is skipped or pending, and every testCase has a jiraKey configured c
     ⏳ Retrieving suites information...
 
     〰 Founded one testsuite(s), keep scraping..
-      〰 Analyzing 1st testsuite: testSuite 1
+      〰 Analyzing testsuite: testSuite 1
       🔍 Looking for testsuite or testcase...
 
       〰 Founded two testsuite(s), keep scraping..
-        〰 Analyzing 2nd testsuite: testSuite 2
+        〰 Analyzing testsuite: testSuite 2
         🔍 Looking for testsuite or testcase...
-          〰 Properly analyzed 1st testcase: testCase 2.1
-          〰 Properly analyzed 2nd testcase: testCase 2.2
+          〰 Properly analyzed testcase: testCase 2.1
+          〰 Properly analyzed testcase: testCase 2.2
         ✔  Successfully analyzed two testcase(s)
         〰 End of testsuite: testSuite 2
 
         〰 Analyzing 3rd testsuite: testSuite 3
         🔍 Looking for testsuite or testcase...
-          〰 Properly analyzed 1st testcase: testCase 3.1
-          〰 Properly analyzed 2nd testcase: testCase 3.2
+          〰 Properly analyzed testcase: testCase 3.1
+          〰 Properly analyzed testcase: testCase 3.2
         ✔  Successfully analyzed two testcase(s)
         〰 End of testsuite: testSuite 3
 
@@ -258,12 +268,29 @@ No testCase is skipped or pending, and every testCase has a jiraKey configured c
 ====================================================================================================
 ```
 
+**shortenLogMode enabled**
+
+```
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information...
+
+    ------------------------------------
+    All suites has been parsed correctly!
+
+====================================================================================================
+```
+
 ### Missing jiraKeys
 
 **Description**  
-Jira keys are missing in testCase 1.2 & testCase 1.3
+Jira keys are missing in testCase 1.2 & testCase 1.3.  
+**Cypress result:**
 
-```shell
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)
@@ -275,6 +302,12 @@ Jira keys are missing in testCase 1.2 & testCase 1.3
 
  3 passing (185ms)
 
+────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+**shortenLogMode disabled**
+
+```
 ====================================================================================================
 
   Cypress Xray Junit Reporter | Creating XML report
@@ -283,11 +316,10 @@ Jira keys are missing in testCase 1.2 & testCase 1.3
     ⏳ Retrieving suites information...
 
     〰 Founded one testsuite(s), keep scraping..
-      〰 Analyzing 1st testsuite: testSuite 1
+      〰 Analyzing testsuite: testSuite 1
       🔍 Looking for testsuite or testcase...
-        〰 Properly analyzed 1st testcase: testCase 1.1
-        ⚠️ Missing jira key in testcase: testCase 1.2
-        〰 Skipping 2nd testcase: testCase 1.2
+        〰 Properly analyzed testcase: testCase 1.1
+        〰 Properly analyzed testcase: testCase 2.1
         ⚠️ Missing jira key in testcase: testCase 1.3
         〰 Skipping 3rd testcase: testCase 1.3
       ✔  Successfully analyzed three testcase(s)
@@ -300,30 +332,51 @@ Jira keys are missing in testCase 1.2 & testCase 1.3
 ====================================================================================================
 ```
 
+**shortenLogMode enabled**
+
+```
+====================================================================================================
+
+  Cypress Xray Junit Reporter | Creating XML report
+  -------------------------------------------------
+
+    ⏳ Retrieving suites information from Root Suite...
+    ⚠️ Missing jira key in testcase: testCase 1.3
+    ‼ Missing jira key in at least one testcase
+    ‼ Skipping testcases:
+    - testCase 1.3
+
+  ------------------------------------
+  All suites have been parsed correctly!
+
+====================================================================================================
+```
+
 ### Skipped or Pending tests
 
 **Description**
-Skipping or Pending tests will be skipped
+Skipping or Pending tests will be skipped  
+**Cypress result:**
 
-```shell
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)
 
-  testSuite 1
-    1) testCase 1.1
-    - testCase 1.2
-    - testCase 1.3
+ testSuite 1
+      √ testCase 1.1
+      - testCase 1.2
+      - testCase 1.3
 
- 0 passing (398ms)
+  1 passing (398ms)
   2 pending
-  1 failing
 
-  1) testSuite 1
-       testCase 1.1:
-     AssertionError: expected true to equal false
-      at Context.eval (webpack://plain-iqpfe-cypresstest/./cypress/e2e/tests/myFirstTest.cy.js:6:18)
+────────────────────────────────────────────────────────────────────────────────────────────────────
+```
 
+**shortenLogMode disabled**
+
+```
 ====================================================================================================
 
   Cypress Xray Junit Reporter | Creating XML report
@@ -332,52 +385,36 @@ Skipping or Pending tests will be skipped
     ⏳ Retrieving suites information...
 
     〰 Founded one testsuite(s), keep scraping..
-      〰 Analyzing 1st testsuite: testSuite 1
+      〰 Analyzing testsuite: testSuite 1
       🔍 Looking for testsuite or testcase...
-        〰 Properly analyzed 1st testcase: testCase 1.1
-        〰 Skipping 2nd testcase: testCase 1.2
-        〰 Skipping 3rd testcase: testCase 1.3
+        〰 Properly analyzed testcase: testCase 1.1
+        〰 Skipping testcase: testCase 1.2
+        〰 Skipping testcase: testCase 1.3
       ✔  Successfully analyzed three testcase(s)
       〰 End of testsuite: testSuite 1
 
   ------------------------------------
   All suites has been parsed correctly!
 
-  ====================================================================================================
+====================================================================================================
 ```
 
-### Shorten log mode
+**shortenLogMode enabled**
 
-**Description**  
-When the shortenLogMode option is enabled (only errors will be printed)
-
-```shell
-────────────────────────────────────────────────────────────────────────────────────────────────────
-
-  Running:  myFirstTest.cy.js                                                               (1 of 1)
-
-  testSuite 1
-    testSuite 2
-      √ testCase 2.1
-      √ testCase 2.2
-    testSuite 3
-      √ testCase 3.1
-      √ testCase 3.2
-
- 4 passing (475ms)
-
+```
 ====================================================================================================
 
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information from Root Suite...
-          ⚠️  Missing jira key in testcase: testCase 2.1
-          ⚠️  Missing jira key in testcase: testCase 2.2
-          ⚠️  Missing jira key in testcase: testCase 2.3
-        ‼ Missing jira key in at least one testcase, it/them will be skipped
+    ⏳ Retrieving suites information...
+
+    ‼ Skipping testcases:
+    - testCase 1.2,
+    - testCase 1.3
+
   ------------------------------------
-  All suites have been parsed correctly!
+  All suites has been parsed correctly!
 
 ====================================================================================================
 ```
@@ -387,7 +424,7 @@ When the shortenLogMode option is enabled (only errors will be printed)
 **Description**  
 Try reinstall the latest version of the library
 
-```shell
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)
@@ -418,7 +455,7 @@ module.exports = defineConfig({
 
 Deletes the videos of passed specs
 
-```bash
+```
 ====================================================================================================
 
 Test-Run "myFirstTest": SUCCESS!
@@ -433,7 +470,7 @@ Cypress doesn't automatically logs **retries errors** but log only the last one.
  In some cases you need to know the error on each attempt because it can change.  
 **Before betterRetries:**
 
-```bash
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)
@@ -455,7 +492,7 @@ Cypress doesn't automatically logs **retries errors** but log only the last one.
 
 **After betterRetries:**
 
-```bash
+```
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
   Running:  myFirstTest.cy.js                                                               (1 of 1)

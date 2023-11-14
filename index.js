@@ -30,7 +30,9 @@ const testTotals = {
 // number of whitespace indentation characters
 let wsNum = 0
 
-let testOrdered = [];
+let testOrderedByUUID = [];
+
+let skippedTestcase = []
 
 function findReporterOptions(options) {
   debug('Checking for options in', options);
@@ -173,7 +175,7 @@ function CypressXrayJunitReporter(runner, options) {
       if (testsuites[suiteNumber]?.testsuite[0]._attr.name === suiteTitle) {
         // if it corresponds to the passed suite title, return it
         return testsuites[suiteNumber]?.testsuite;
-      } else {
+      } else if (suiteTitle !== '' && testsuites[suiteNumber]?.testsuite[0]._attr.name !== 'Root Suite') {
         throw new Error('Suite counting error: suite title not corresponding.\nExpect: ' + suiteTitle + ', got: ' + testsuites[suiteNumber]?.testsuite[0]._attr.name);
       }
     } else if (suiteNumber === undefined) {
@@ -190,42 +192,41 @@ function CypressXrayJunitReporter(runner, options) {
       const err = test.err;
       if (test.state !== 'skipped' && test.state !== 'pending') {
         const testCase = this.getTestcaseData(test, err);
-
         if (missingJiraKey.includes(test.title)) {
-          logMessages.warning(wsNum, `Missing jira key in testcase: ${test.title}`);
-          if (!shortenLogMode) {
-            logMessages.skippedTestcase(wsNum, test.title);
-          }
+          logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`);
+          logMessages.skippedTestcase(shortenLogMode, wsNum, test.title);
+          skippedTestcase.push(test.title);
         } else {
-          if (!shortenLogMode) {
-            logMessages.analyzedTestcase(wsNum, test.title);
-          }
-          findSuite(test.parent.title, testOrdered.indexOf(test.parent.uuid)).push(testCase);
+          logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title);
+          findSuite(test.parent.title, testOrderedByUUID.indexOf(test.parent.uuid)).push(testCase);
         }
-      } else if (!shortenLogMode) {
-        logMessages.skippedTestcase(wsNum, test.title);
       } else {
-        return
+        logMessages.skippedTestcase(shortenLogMode, wsNum, test.title);
+        skippedTestcase.push(test.title);
       }
 
     });
     wsNum--;
 
     if (missingJiraKey.length > 0) {
-      logMessages.error(wsNum)
+      logMessages.missingError(shortenLogMode, wsNum)
       missingJiraKey = []
+    }
+    if (skippedTestcase.length > 0) {
+      logMessages.skippedError(shortenLogMode, skippedTestcase)
+      skippedTestcase = []
     }
   };
   let testsuiteNum = 0
   const processSuites = (suites) => {
-    if (!shortenLogMode) {
-      logMessages.foundingSuite(wsNum, suites.length)
-    }
+
+    logMessages.foundingSuite(shortenLogMode, wsNum, suites.length)
+
     wsNum++
     suites.forEach((suite) => {
-      if (!shortenLogMode) {
-        logMessages.analyzingSuite(wsNum, suite.title)
-      }
+
+      logMessages.analyzingSuite(shortenLogMode, wsNum, suite.title)
+
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites);
         testsuiteNum++
@@ -237,9 +238,9 @@ function CypressXrayJunitReporter(runner, options) {
       } else {
         throw new Error('Config Error');
       }
-      if (!shortenLogMode) {
-        logMessages.endSuite(wsNum, suite.title)
-      }
+
+      logMessages.endSuite(wsNum, suite.title)
+
     });
     wsNum--
 
@@ -272,7 +273,7 @@ function CypressXrayJunitReporter(runner, options) {
     if (!isInvalidSuite(suite)) {
       const uuidSuite = uuidv4();;
       suite.uuid = uuidSuite;
-      testOrdered.push(uuidSuite);
+      testOrderedByUUID.push(uuidSuite);
       testsuites.push(this.getTestsuiteData(suite));
     }
   };
@@ -285,7 +286,7 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._onSuiteEnd = function (suite) {
     if (!isInvalidSuite(suite) && suite.tests.length !== 0) {
-      const testsuite = findSuite(suite.title, testOrdered.indexOf(suite.uuid));
+      const testsuite = findSuite(suite.title, testOrderedByUUID.indexOf(suite.uuid));
       if (testsuite) {
         const start = testsuite[0]._attr.timestamp;
         testsuite[0]._attr.time = this._Date.now() - start;
