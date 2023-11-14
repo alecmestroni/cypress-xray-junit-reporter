@@ -18,8 +18,9 @@
 
 ##
 
-Cypress Xray Junit Reporter is a custom-reporter capable to produce XRAY compatible JUnit-style XML test results that can also attach screenshots of test failures to the report.  
-This reporter is tailor-made on the XRAY's guide ["Taking advantage of JUnit XML reports"](https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports) and on the Cypress guide ["Custom reporter"](https://docs.cypress.io/guides/tooling/reporters#Custom-reporter).  
+Enhances your Cypress test suite with the cypress-xray-junit-reporter a specialized custom reporter designed to seamlessly generating comprehensive XRay-compatible JUnit-style XML reports, complete with embedded screenshots on test failures, facilitating a thorough analysis of test execution.  
+This tailor-made reporter not only aligns with the best practices outlined in XRAY's guide on ["Taking advantage of JUnit XML reports"](https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports) but also leverages Cypress's ["Custom reporter"](https://docs.cypress.io/guides/tooling/reporters#Custom-reporter) capabilities.
+
 XML cypress custom reporter based on Mocha to be compatible with:
 
 - [XRAY | Native Test Management for Jira](https://www.getxray.app/)

@@ -1,7 +1,7 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "0.6.5",
-  "description": "Cypress Reporter | Produces XRay compatible JUnit-style XML test results for cypress capable to attach screenshot on test failures",
+  "version": "0.6.6",
+  "description": "Cypress Reporter | Enhances your Cypress test suite with the cypress-xray-junit-reporter a specialized custom reporter designed to seamlessly generating comprehensive XRay-compatible JUnit-style XML reports, complete with embedded screenshots on test failures, facilitating a thorough analysis of test execution.",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {},
