@@ -11,7 +11,7 @@ const mkdirp = require('mkdirp');
 const md5 = require('md5');
 const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
-const logMessages = require('./logMessages');
+const logMessages = require('./src/logMessages');
 const { v4: uuidv4 } = require('uuid');
 
 // Save timer references so that times are correct even if Date is stubbed.
@@ -160,6 +160,7 @@ function CypressXrayJunitReporter(runner, options) {
   testTotals.skipped = 0;
   this._options = configureDefaults(options);
   const shortenLogMode = this._options.shortenLogMode
+  const xrayMode = this._options.xrayMode
   this._runner = runner;
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle;
   this._antId = 0;
@@ -263,6 +264,9 @@ function CypressXrayJunitReporter(runner, options) {
 
   // remove old results
   this._runner.on('start', function () {
+    wsNum = 0
+    testOrderedByUUID = [];
+    skippedTestcase = []
     if (fs.existsSync(this._options.mochaFile)) {
       debug('removing report file', this._options.mochaFile);
       fs.unlinkSync(this._options.mochaFile);
@@ -300,9 +304,9 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._runner.on('end', function () {
     const rootSuite = mapSuites(this.runner.suite, testTotals);
-    logMessages.startingPlugin(wsNum)
+    logMessages.startingPlugin(xrayMode)
     processSuites(rootSuite.suites)
-    logMessages.endPlugin(wsNum)
+    logMessages.endPlugin()
     this.flush(testsuites);
 
   }.bind(this));

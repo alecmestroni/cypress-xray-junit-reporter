@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npx cypress run --spec \"cypress/e2e/sampleTest.cy.js\""
+    "test": "npx cypress run --spec \"cypress/e2e/sampleTest.cy.js\"",
+    "moreTests": "npx cypress run --spec \"cypress/e2e/*.cy.js\""
   },
   "author": "",
   "license": "ISC",

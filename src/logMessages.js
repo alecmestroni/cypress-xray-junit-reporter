@@ -1,16 +1,18 @@
 const converter = require('number-to-words');
 const chalk = require('chalk');
 
-const separator = '===================================================================================================='
+const separator = chalk.grey('====================================================================================================\n')
 const whitespace = "  "
 let tabNum = 2
 
 const logMessages = {
-    startingPlugin: () => {
+    startingPlugin: (xrayMode) => {
         console.log(separator);
-        console.log(chalk.white('\n  Cypress Xray Junit Reporter | Creating XML report'));
+        console.log(chalk.white('  Cypress Xray Junit Reporter | Creating XML report'));
         console.log(chalk.white('  -------------------------------------------------\n'));
-        console.log(chalk.white('    ⏳ Retrieving suites information from Root Suite... '));
+        if (xrayMode) { console.log(chalk.white('    ⏳ XrayMode Enabled -> Retrieving suites information from Root Suite... ')); } else {
+            console.log(chalk.white('    ⏳ XrayMode Disabled -> Retrieving suites information from Root Suite without searching for JiraKeys... '));
+        }
     },
     endPlugin: () => {
         console.log(`\n${whitespace.repeat(tabNum)}------------------------------------`);

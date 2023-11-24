@@ -77,7 +77,7 @@ This example shows how to install the plugin for e2e testing type. Read Cypress 
 ```javascript
 const { defineConfig } = require('cypress')
 module.exports = defineConfig({
-	deleteVideoOnPass: true,
+	deleteVideoOnPassed: true,
 	betterRetries: true,
 	reporter: 'cypress-xray-junit-reporter',
 	reporterOptions: {
@@ -240,7 +240,7 @@ All test cases are executed without any skips or pending status. Additionally, e
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information...
+    ⏳  XrayMode Enabled -> Retrieving suites information from Root Suite...
 
     〰 Founded one testsuite(s), keep scraping..
       〰 Analyzing testsuite: testSuite 1
@@ -277,7 +277,7 @@ All test cases are executed without any skips or pending status. Additionally, e
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information...
+    ⏳  XrayMode Enabled -> Retrieving suites information from Root Suite...
 
     ------------------------------------
     All suites has been parsed correctly!
@@ -314,7 +314,7 @@ Jira keys are missing in testCase 1.2 & testCase 1.3.
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information...
+    ⏳  XrayMode Enabled -> Retrieving suites information from Root Suite...
 
     〰 Founded one testsuite(s), keep scraping..
       〰 Analyzing testsuite: testSuite 1
@@ -341,7 +341,7 @@ Jira keys are missing in testCase 1.2 & testCase 1.3.
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information from Root Suite...
+    ⏳ XrayMode Enabled -> Retrieving suites information from Root Suite...
     ⚠️ Missing jira key in testcase: testCase 1.3
     ‼ Missing jira key in at least one testcase
     ‼ Skipping testcases:
@@ -383,7 +383,7 @@ Skipping or Pending tests will be skipped
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information...
+    ⏳  XrayMode Enabled -> Retrieving suites information from Root Suite...
 
     〰 Founded one testsuite(s), keep scraping..
       〰 Analyzing testsuite: testSuite 1
@@ -408,7 +408,7 @@ Skipping or Pending tests will be skipped
   Cypress Xray Junit Reporter | Creating XML report
   -------------------------------------------------
 
-    ⏳ Retrieving suites information...
+    ⏳  XrayMode Enabled -> Retrieving suites information from Root Suite...
 
     ‼ Skipping testcases:
     - testCase 1.2,
@@ -447,7 +447,7 @@ Set them as other cypress options inside the `cypress.config.js`:
 ```javascript
 const { defineConfig } = require('cypress')
 module.exports = defineConfig({
-	deleteVideoOnPass: true,
+	deleteVideoOnPassed: true,
 	betterRetries: true,
 })
 ```
