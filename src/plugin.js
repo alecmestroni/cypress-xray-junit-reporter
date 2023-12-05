@@ -22,18 +22,26 @@ module.exports = (on, config) => {
         });
     }
 
-    if (config.deleteVideoOnPassed) {
+    if (config.deleteVideoOnPassed && config.video) {
         on('after:spec', (spec, results) => {
-            if (!results.video || results.stats.failures || results.stats.skipped) {
-                // No video available, nothing to delete
-                // Either failures or skipped tests, do not delete the video
-                return;
-            }
-            // If we reached this point, the spec passed, and no tests failed or skipped
             const separator = chalk.grey('\n====================================================================================================\n');
-            console.log(chalk.grey('Test-Run "' + chalk.cyan(spec.fileName) + '": ' + chalk.green("SUCCESS!") + '\nDeleting video output'));
-            console.log(separator);
-            fs.unlinkSync(results.video);
+            try {
+                if (results && results.video && (!results.stats.failures || !results.stats.skipped)) {
+                    // If we reached this point, the spec passed, and no tests failed or skipped
+                    fs.unlinkSync(results.video);
+                    console.log(chalk.grey('Test-Run "' + chalk.cyan(spec.fileName) + '": ' + chalk.green("SUCCESS!") + '\nDeleting video output'));
+                    console.log(separator);
+                }
+            } catch (e) {
+                /* 
+                Handling firefox error on capturing videos:
+                "Warning: We failed capturing this video.
+                This error will not affect or change the exit code."
+                */
+                console.log(chalk.grey('\nNo video found for Test-Run: "' + chalk.cyan(spec.fileName) + '"'));
+                console.log(separator);
+                return
+            }
         })
     }
     return config;
