@@ -37,6 +37,11 @@ See [here](https://www.npmjs.com/package/cypress-xray-junit-reporter#extra-featu
 
 https://github.com/alecmestroni/cypress-xray-junit-reporter/assets/62354989/4e8b1067-59bd-48ef-9f1a-183cfb049864
 
+## Identified Issue
+
+Cypress presently lacks support for transmitting variables to the reporter when using the Electron browser.  
+This results in the impaired functionality of the "attachScreenshot" feature within this specific context. It is highly recommended to utilize alternative browsers for an optimal experience.
+
 ## Install
 
 ```shell
