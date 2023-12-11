@@ -26,7 +26,7 @@ module.exports = (on, config) => {
         on('after:spec', (spec, results) => {
             const separator = chalk.grey('\n====================================================================================================\n');
             try {
-                if (results && results.video && (!results.stats.failures || !results.stats.skipped)) {
+                if (results.video && !results.stats.failures && !results.stats.skipped) {
                     // If we reached this point, the spec passed, and no tests failed or skipped
                     fs.unlinkSync(results.video);
                     console.log(chalk.grey('Test-Run "' + chalk.cyan(spec.fileName) + '": ' + chalk.green("SUCCESS!") + '\nDeleting video output'));
