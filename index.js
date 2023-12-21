@@ -328,10 +328,9 @@ CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   const testsuite = { testsuite: [{ _attr: _attr }] };
 
   if (suite.file) {
-    if (suite.file.includes('\\')) {
-      testsuite.testsuite[0]._attr.file = suite.file.split('\\').pop().split('.')[0]
-    } else if (suite.file.includes('/')) {
-      testsuite.testsuite[0]._attr.file = suite.file.split('/').pop().split('.')[0]
+    if (suite.file.includes('\\') || suite.file.includes('/')) {
+      const separator = suite.file.includes('\\') ? '\\' : '/';
+      testsuite.testsuite[0]._attr.file = suite.file.split(separator).pop()
     } else {
       testsuite.testsuite[0]._attr.file = suite.file
     }
@@ -559,7 +558,6 @@ CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsui
   if (reportFilename.indexOf('[hash]') !== -1) {
     reportFilename = reportFilename.replace('[hash]', md5(xml));
   }
-
   if (reportFilename.indexOf('[testsuitesTitle]') !== -1) {
     reportFilename = reportFilename.replace('[testsuitesTitle]', sanitize(this._options.testsuitesTitle));
   }
@@ -567,7 +565,10 @@ CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsui
     reportFilename = reportFilename.replace('[rootSuiteTitle]', sanitize(this._options.rootSuiteTitle));
   }
   if (reportFilename.indexOf('[suiteFilename]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteFilename]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file ?? 'suiteFilename'));
+    reportFilename = reportFilename.replace('[suiteFilename]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file) ?? 'suiteFilename');
+  }
+  if (reportFilename.indexOf('[suiteFilenameNoExt]') !== -1) {
+    reportFilename = reportFilename.replace('[suiteFilenameNoExt]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file).split('.')[0] ?? 'suiteFilename');
   }
   if (reportFilename.indexOf('[suiteName]') !== -1) {
     reportFilename = reportFilename.replace('[suiteName]', sanitize(testsuites[1]?.testsuite[0]?._attr?.name ?? 'suiteName'));
