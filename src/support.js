@@ -10,9 +10,8 @@ function support(Cypress, cy, afterEach) {
 
         function buildScreenshotPath(test) {
             let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.name}/`;
-            const parents = addParentsTitle(runnable);
-            path += parents;
-            path += sanitize(test.title) + ' (failed).png';
+            const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)'
+            path += parents.slice(0, 250) + '.png';
             return path;
         }
 
