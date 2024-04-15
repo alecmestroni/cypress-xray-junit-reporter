@@ -1,6 +1,6 @@
 {
   "name": "cypress-xray-junit-reporter",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Cypress Reporter | Enhances your Cypress test suite with the cypress-xray-junit-reporter a specialized custom reporter designed to seamlessly generating comprehensive XRay-compatible JUnit-style XML reports, complete with embedded screenshots on test failures, facilitating a thorough analysis of test execution.",
   "main": "index.js",
   "types": "index.d.ts",

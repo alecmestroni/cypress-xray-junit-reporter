@@ -13,7 +13,6 @@ const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
 const logMessages = require('./src/logMessages');
 const { v4: uuidv4 } = require('uuid');
-const path = require('path')
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
