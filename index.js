@@ -404,13 +404,25 @@ function addPropertyMessage(message, properties) {
   }
 }
 
-function getScreen(test) {
-  const path = test.screenshot
-  if (path && test.state !== 'passed') {
-    const base64 = getBase64(path)
-    const name = path.split('/').pop()
-    const failureObj = { name: name, base64: base64 }
-    return failureObj
+function createFailureObject(path) {
+  const base64 = getBase64(path);
+  const name = path.split('/').pop();
+  return { name, base64 };
+}
+
+function getFailureObject(screenshot, state) {
+
+  if (screenshot?.path && screenshot?.relativePath && state !== 'passed') {
+    const { path, relativePath } = screenshot;
+    try {
+      return createFailureObject(path);
+    } catch (error) {
+      if (error.message.includes('no such file or directory')) {
+        return createFailureObject(relativePath);
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
@@ -494,9 +506,9 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   if (attachScreenshot) {
-    const screenshot = getScreen(test)
-    if (screenshot) {
-      addPropertyScreenshot(screenshot, properties)
+    const failureObject = getFailureObject(test.screenshot, test.state)
+    if (failureObject) {
+      addPropertyScreenshot(failureObject, properties)
     }
     const errMessage = getErrorMsg(testcase)
     addPropertyMessage(errMessage, properties)

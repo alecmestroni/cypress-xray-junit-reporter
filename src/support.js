@@ -1,27 +1,37 @@
+const sanitize = require('sanitize-filename');
+
+function addParentsTitle(runnable) {
+    const titles = [];
+    let currentRunnable = runnable;
+    while (currentRunnable.parent.title) {
+        titles.push(`${sanitize(currentRunnable.parent.title)} -- `);
+        currentRunnable = currentRunnable.parent;
+    }
+    return titles.reverse().join('').replace(/, /g, '');
+}
+
+function buildScreenshotPath(Cypress, test, runnable) {
+    let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.name}/`;
+    const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)';
+    path += parents.slice(0, 250) + '.png';
+    return path;
+}
+
+function buildScreenshotRelativePath(Cypress, test, runnable) {
+    let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.relative.split("\\").slice(2).join("/")}/`;
+    const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)';
+    path += parents.slice(0, 250) + '.png';
+    return path;
+}
 
 function support(Cypress, cy, afterEach) {
     Cypress.on('test:after:run', (test, runnable) => {
-        const sanitize = require('sanitize-filename');
-
         if (test.state === 'failed') {
-            const path = buildScreenshotPath(test);
-            test.screenshot = path;
-        }
-
-        function buildScreenshotPath(test) {
-            let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.name}/`;
-            const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)'
-            path += parents.slice(0, 250) + '.png';
-            return path;
-        }
-
-        function addParentsTitle(runnable) {
-            const titles = [];
-            while (runnable.parent.title) {
-                titles.push(sanitize(runnable.parent.title) + ' -- ');
-                runnable = runnable.parent;
-            }
-            return titles.toReversed().join('').replace(/, /g, '');
+            const path = buildScreenshotPath(Cypress, test, runnable);
+            const relativePath = buildScreenshotRelativePath(Cypress, test, runnable);
+            test.screenshot = test.screenshot || {}; // Ensure test.screenshot is an object
+            if (path) test.screenshot.path = path; else throw new Error(`Failed to build screenshot path for test ${test.title}`);
+            if (relativePath) test.screenshot.relativePath = relativePath; else throw new Error(`Failed to build relative screenshot path for test ${test.title}`);
         }
     });
 
