@@ -17,6 +17,7 @@ module.exports = defineConfig({
     },
   },
   e2e: {
+    specPattern: 'cypress/e2e/**/*.cy.js',
     setupNodeEvents(on, config) {
       require("cypress-xray-junit-reporter/plugin")(on, config)
       on('task', {
