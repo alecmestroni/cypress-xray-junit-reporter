@@ -1,37 +1,35 @@
 const sanitize = require('sanitize-filename');
+const path = require('path');
 
 function addParentsTitle(runnable) {
     const titles = [];
     let currentRunnable = runnable;
-    while (currentRunnable.parent.title) {
-        titles.push(`${sanitize(currentRunnable.parent.title)} -- `);
+
+    while (currentRunnable?.parent?.title) {
+        titles.unshift(sanitize(currentRunnable.parent.title));
         currentRunnable = currentRunnable.parent;
     }
-    return titles.reverse().join('').replace(/, /g, '');
+    return titles.join(' -- ');
 }
 
-function buildScreenshotPath(Cypress, test, runnable) {
-    let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.name}/`;
-    const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)';
-    path += parents.slice(0, 250) + '.png';
-    return path;
+function getRelativeFolderArray(Cypress) {
+    return `${Cypress.spec.relative.replace(/\\/g, path.sep)}`.split(path.sep).slice(2);
 }
 
-function buildScreenshotRelativePath(Cypress, test, runnable) {
-    let path = `${Cypress.config('screenshotsFolder').replace(/\\/g, "/")}/${Cypress.spec.relative.split("\\").slice(2).join("/")}/`;
-    const parents = addParentsTitle(runnable) + sanitize(test.title) + ' (failed)';
-    path += parents.slice(0, 250) + '.png';
-    return path;
+function getScreenshotName(test, runnable) {
+    return `${addParentsTitle(runnable)} -- ${sanitize(test.title)} (failed)`.slice(0, 250) + '.png';
 }
 
 function support(Cypress, cy, afterEach) {
     Cypress.on('test:after:run', (test, runnable) => {
         if (test.state === 'failed') {
-            const path = buildScreenshotPath(Cypress, test, runnable);
-            const relativePath = buildScreenshotRelativePath(Cypress, test, runnable);
+            const screenshotsFolder = Cypress.config('screenshotsFolder').replace(/\\/g, path.sep);
+            const relativeFoldersArray = getRelativeFolderArray(Cypress);
+            const screenshotName = getScreenshotName(test, runnable);
             test.screenshot = test.screenshot || {}; // Ensure test.screenshot is an object
-            if (path) test.screenshot.path = path; else throw new Error(`Failed to build screenshot path for test ${test.title}`);
-            if (relativePath) test.screenshot.relativePath = relativePath; else throw new Error(`Failed to build relative screenshot path for test ${test.title}`);
+            if (screenshotsFolder) test.screenshot.screenshotsFolder = screenshotsFolder; else throw new Error(`Failed to retrieve screenshotFolder for test ${test.title}`);
+            if (relativeFoldersArray) test.screenshot.relativeFoldersArray = relativeFoldersArray; else throw new Error(`Failed to build relative screenshot path for test ${test.title}`);
+            if (screenshotName) test.screenshot.screenshotName = screenshotName; else throw new Error(`Failed to screenshot name for test ${test.title}`);
         }
     });
 

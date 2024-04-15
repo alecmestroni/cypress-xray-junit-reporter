@@ -13,6 +13,7 @@ const stripAnsi = require('strip-ansi');
 const createStatsCollector = require("mocha/lib/stats-collector");
 const logMessages = require('./src/logMessages');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path')
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
@@ -411,18 +412,23 @@ function createFailureObject(path) {
 }
 
 function getFailureObject(screenshot, state) {
-
-  if (screenshot?.path && screenshot?.relativePath && state !== 'passed') {
-    const { path, relativePath } = screenshot;
-    try {
-      return createFailureObject(path);
-    } catch (error) {
-      if (error.message.includes('no such file or directory')) {
-        return createFailureObject(relativePath);
-      } else {
-        throw error;
+  if (screenshot?.relativeFoldersArray && screenshot?.screenshotsFolder && screenshot?.screenshotName && state !== 'passed') {
+    const { relativeFoldersArray, screenshotsFolder, screenshotName } = screenshot;
+    for (let i = 0; i < relativeFoldersArray.length; i++) {
+      const pathParts = [screenshotsFolder, ...relativeFoldersArray.slice(i), screenshotName];
+      const screenshotPath = path.join(...pathParts);
+      try {
+        return createFailureObject(screenshotPath);
+      } catch (error) {
+        if (error.message.includes('no such file or directory')) {
+          continue
+        } else {
+          throw error;
+        }
       }
     }
+    // No file was found
+    console.log('No screenshot file was found for the current test: ' + test.title);
   }
 }
 
@@ -506,7 +512,7 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   if (attachScreenshot) {
-    const failureObject = getFailureObject(test.screenshot, test.state)
+    const failureObject = getFailureObject(test.screenshot, test.state, test.title)
     if (failureObject) {
       addPropertyScreenshot(failureObject, properties)
     }
