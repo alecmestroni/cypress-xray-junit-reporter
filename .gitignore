@@ -1,7 +1,6 @@
 node_modules
-package-lock.json
 screenshots
 video
-fixtures    
+fixtures
 .vscode
 test.js
