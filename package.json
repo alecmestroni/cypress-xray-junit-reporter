@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "chalk": "^4.1.2",
-    "cypress": "^13.7.3",
     "debug": "^4.3.4",
     "md5": "^2.3.0",
     "mkdirp": "^3.0.0",
