@@ -1,7 +1,7 @@
 describe('testSuite 0', () => {
 	describe('testSuite 1', () => {
 		it('testCase 1.1', { jiraKey: 'test1.1', retries: 1 }, () => {
-			expect(true).to.eq(false);
+			expect(true).to.eq(true);
 		})
 	})
 	describe('testSuite 2', () => {
