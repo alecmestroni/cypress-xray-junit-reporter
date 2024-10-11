@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npx cypress open",
-    "moreTests": "cypress run"
+    "test": "npx cypress run",
+    "moreTests": "cypress run",
+    "cy:open": "npx cypress open"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "cypress": "^13.3.2",
+    "cypress": "^13.15.0",
     "cypress-multi-reporters": "^1.6.3",
     "cypress-xray-junit-reporter": "file:.."
   }
