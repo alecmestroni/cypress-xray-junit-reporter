@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
       - run: cd test && npm ci
       - run: cd test && npm test
-      - run: cd test && npm moreTests
+      - run: cd test && npm run moreTests
   publish-gpr:
     needs: build
     runs-on: ubuntu-latest

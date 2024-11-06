@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="0.106" tests="1" failures="0">
-  <testsuite name="Root Suite" timestamp="2024-11-06T11:18:58" tests="0" file="asser_another_test.cy.js" time="0.000" failures="0">
+<testsuites name="Mocha Tests" time="0.060" tests="1" failures="0">
+  <testsuite name="Root Suite" timestamp="2024-11-06T11:26:02" tests="0" file="asser_another_test.cy.js" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="test" timestamp="2024-11-06T11:18:58" tests="1" time="0.062" failures="0">
-    <testcase name="testcase" time="0.062" classname="test">
+  <testsuite name="test" timestamp="2024-11-06T11:26:02" tests="1" time="0.031" failures="0">
+    <testcase name="testcase" time="0.030" classname="test">
       <properties>
         <property name="test_key" value="abc"/>
       </properties>
