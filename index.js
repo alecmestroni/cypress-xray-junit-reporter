@@ -582,13 +582,13 @@ CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsui
     reportFilename = reportFilename.replace('[rootSuiteTitle]', sanitize(this._options.rootSuiteTitle));
   }
   if (reportFilename.indexOf('[suiteFilename]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteFilename]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file) ?? 'suiteFilename');
+    reportFilename = reportFilename.replace('[suiteFilename]', testsuites[0]?.testsuite[0]?._attr?.file ? sanitize(testsuites[0]?.testsuite[0]?._attr?.file) : 'suiteFilename');
   }
   if (reportFilename.indexOf('[suiteFilenameNoExt]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteFilenameNoExt]', sanitize(testsuites[0]?.testsuite[0]?._attr?.file).split('.')[0] ?? 'suiteFilename');
+    reportFilename = reportFilename.replace('[suiteFilenameNoExt]', testsuites[0]?.testsuite[0]?._attr?.file ? sanitize(testsuites[0]?.testsuite[0]?._attr?.file).split('.')[0] : 'suiteFilename');
   }
   if (reportFilename.indexOf('[suiteName]') !== -1) {
-    reportFilename = reportFilename.replace('[suiteName]', sanitize(testsuites[1]?.testsuite[0]?._attr?.name ?? 'suiteName'));
+    reportFilename = reportFilename.replace('[suiteName]', testsuites[1]?.testsuite[0]?._attr?.name ? sanitize(testsuites[1]?.testsuite[0]?._attr?.name) : 'suiteName');
   }
 
   return reportFilename;
