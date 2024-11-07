@@ -22,7 +22,7 @@ function getScreenshotName(test, runnable) {
 
 function support(Cypress, cy, afterEach) {
     Cypress.on('test:after:run', (test, runnable) => {
-        if (test.state === 'failed') {
+        if (test.state === 'failed' && Cypress.config('screenshotOnRunFailure') === true) {
             const screenshotsFolder = Cypress.config('screenshotsFolder').replace(/\\/g, path.sep);
             const relativeFoldersArray = getRelativeFolderArray(Cypress);
             const screenshotName = getScreenshotName(test, runnable);

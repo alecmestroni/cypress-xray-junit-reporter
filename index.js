@@ -427,7 +427,7 @@ function getFailureObject(screenshot, state) {
       }
     }
     // No file was found
-    console.log('No screenshot file was found for the current test: ' + test.title);
+    logMessages.warning(false, 0, `Missing screenshot: ${screenshot.screenshotName}`);
   }
 }
 

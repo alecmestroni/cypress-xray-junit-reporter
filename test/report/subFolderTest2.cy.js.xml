@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.334" tests="9" failures="0">
+  <testsuite name="Root Suite" timestamp="2024-11-07T09:44:24" tests="0" file="subFolderTest2.cy.js" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="testSuite 0" timestamp="2024-11-07T09:44:24" tests="1" time="0.314" failures="0">
+    <testcase name="testCase 0.1" time="0.023" classname="testSuite 0">
+      <properties>
+        <property name="test_key" value="test0.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="testSuite 1" timestamp="2024-11-07T09:44:25" tests="1" time="0.055" failures="0">
+    <testcase name="testCase 1.1" time="0.020" classname="testSuite 0 testSuite 1">
+      <properties>
+        <property name="test_key" value="test1.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="testSuite 2" timestamp="2024-11-07T09:44:25" tests="3" time="0.099" failures="0">
+  </testsuite>
+  <testsuite name="testSuite 3" timestamp="2024-11-07T09:44:25" tests="2" time="0.052" failures="0">
+    <testcase name="testCase 3.1" time="0.011" classname="testSuite 0 testSuite 3">
+      <properties>
+        <property name="test_key" value="test3.1"/>
+      </properties>
+    </testcase>
+    <testcase name="testCase 3.2" time="0.011" classname="testSuite 0 testSuite 3">
+      <properties>
+        <property name="test_key" value="test3.2"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="testSuite 4" timestamp="2024-11-07T09:44:25" tests="1" time="0.031" failures="0">
+    <testcase name="testCase 4.1" time="0.014" classname="testSuite 0 testSuite 4">
+      <properties>
+        <property name="test_key" value="test4.1.1"/>
+      </properties>
+    </testcase>
+  </testsuite>
+  <testsuite name="testSuite 4" timestamp="2024-11-07T09:44:25" tests="1" time="0.031" failures="0">
+    <testcase name="testCase 4.1" time="0.016" classname="testSuite 0 testSuite 4">
+      <properties>
+        <property name="test_key" value="test4.1.2"/>
+      </properties>
+    </testcase>
+  </testsuite>
+</testsuites>

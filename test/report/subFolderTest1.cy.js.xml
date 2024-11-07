@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.051" tests="1" failures="0">
+  <testsuite name="Root Suite" timestamp="2024-11-07T09:44:22" tests="0" file="subFolderTest1.cy.js" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="test" timestamp="2024-11-07T09:44:22" tests="1" time="0.028" failures="0">
+    <testcase name="testcase" time="0.027" classname="test">
+      <properties>
+        <property name="test_key" value="abc"/>
+      </properties>
+    </testcase>
+  </testsuite>
+</testsuites>

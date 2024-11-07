@@ -2,6 +2,6 @@
 
 describe("test", () => {
     it("testcase", { jiraKey: 'abc' }, () => {
-        expect(2).to.be.greaterThan(1);
+        expect(true).to.eq(true);
     })
 })

@@ -14,7 +14,6 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
-import './commands'
 import 'cypress-xray-junit-reporter/support'
 
 // Alternatively you can use CommonJS syntax:
