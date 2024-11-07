@@ -17,9 +17,9 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: sh test.sh ci
-      - run: sh test.sh test
-      - run: sh test.sh "run moreTests"
+      - run: sh test/test.sh ci
+      - run: sh test/test.sh test
+      - run: sh test/test.sh "run moreTests"
   publish-gpr:
     needs: build
     runs-on: ubuntu-latest
