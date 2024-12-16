@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx cypress run",
     "moreTests": "cypress run",
+    "single": "cypress run -s cypress/e2e/hooks.cy.js",
     "cy:open": "npx cypress open"
   },
   "author": "",

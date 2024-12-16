@@ -191,7 +191,8 @@ function CypressXrayJunitReporter(runner, options) {
 
     tests.forEach((test) => {
       const err = test.err;
-      if (test.state !== 'skipped' && test.state !== 'pending') {
+      // if test.parent.uuid is missing the suite hasn't been initialized correctly, most of the time is caused by before/beforeEach fail
+      if (test.parent.uuid && test.state !== 'skipped' && test.state !== 'pending') {
         const testCase = this.getTestcaseData(test, err);
         if (missingJiraKey.includes(test.title)) {
           logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`);
@@ -220,7 +221,6 @@ function CypressXrayJunitReporter(runner, options) {
   };
   let testsuiteNum = 0
   const processSuites = (suites) => {
-
     logMessages.foundingSuite(shortenLogMode, wsNum, suites.length)
 
     wsNum++

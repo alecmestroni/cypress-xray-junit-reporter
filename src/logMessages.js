@@ -38,7 +38,7 @@ const logMessages = {
         let wsNum
         if (shortenLogMode) {
             wsNum = tabNum
-            const message = `‼ Skipping testcases:\n${whitespace.repeat(wsNum)}` + chalk.cyan('- ' + testArray.join(`,\n${whitespace.repeat(wsNum)}- `))
+            const message = `‼ Skipping testcases:\n${whitespace.repeat(wsNum)}` + chalk.cyan('- ' + testArray.join(`\n${whitespace.repeat(wsNum)}- `))
             console.log(`${whitespace.repeat(wsNum)}${chalk.red(message)}`);
         }
     },
