@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="6.499" tests="0" failures="1">
-  <testsuite name="Root Suite" timestamp="2024-12-16T14:38:18" tests="0" file="hooks.cy.js" time="0.000" failures="0">
-  </testsuite>
-</testsuites>

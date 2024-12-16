@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="6.857" tests="2" failures="1">
+  <testsuite name="Root Suite" timestamp="2024-12-16T15:29:27" tests="0" file="beforeHooks.cy.js" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="A Test" timestamp="2024-12-16T15:29:34" tests="2" time="0.000" failures="1">
+    <testcase name="A Test - IT" time="4.353" classname="A Test">
+      <failure message="Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
+
+Because this error occurred during a `before all` hook we are skipping all of the remaining tests." type="AssertionError"><![CDATA[AssertionError: Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
+
+Because this error occurred during a `before all` hook we are skipping all of the remaining tests.
+    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:3:35)]]></failure>
+      <properties>
+        <property name="test_key" value="EPM-00000"/>
+        <property name="testrun_comment"><![CDATA[{color:#ff0000}AssertionError: Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
+
+Because this error occurred during a `before all` hook we are skipping all of the remaining tests.
+    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:3:35){color}]]></property>
+      </properties>
+    </testcase>
+  </testsuite>
+</testsuites>

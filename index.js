@@ -191,22 +191,34 @@ function CypressXrayJunitReporter(runner, options) {
 
     tests.forEach((test) => {
       const err = test.err;
-      // if test.parent.uuid is missing the suite hasn't been initialized correctly, most of the time is caused by before/beforeEach fail
-      if (test.parent.uuid && test.state !== 'skipped' && test.state !== 'pending') {
-        const testCase = this.getTestcaseData(test, err);
-        if (missingJiraKey.includes(test.title)) {
-          logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`);
-          logMessages.skippedTestcase(shortenLogMode, wsNum, test.title);
-          skippedTestcase.push(test.title);
-        } else {
+      const testCase = this.getTestcaseData(test, err);
+      if (test.state !== 'skipped' && test.state !== 'pending') {
+        if (test.parent.uuid) {
+          if (missingJiraKey.includes(test.title)) {
+            logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`);
+            logMessages.skippedTestcase(shortenLogMode, wsNum, test.title);
+            skippedTestcase.push(test.title);
+          } else {
+            logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title);
+            findSuite(test.parent.title, testOrderedByUUID.indexOf(test.parent.uuid)).push(testCase);
+          }
+        } else if (!test.parent.uuid && test.state == 'failed') {
+          // if test.parent.uuid is missing the suite hasn't been initialized correctly
+          // if its a failure, it is caused by before/beforeEach fail
           logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title);
-          findSuite(test.parent.title, testOrderedByUUID.indexOf(test.parent.uuid)).push(testCase);
+          const suite = test.parent
+          const uuidSuite = uuidv4();;
+          suite.uuid = uuidSuite;
+          testOrderedByUUID.push(uuidSuite);
+          testsuites.push(this.getTestsuiteData(suite));
+          findSuite(test.parent.title, testOrderedByUUID.indexOf(uuidSuite)).push(testCase);
+        } else {
+          throw new Error('GENERIC ERROR while parsing suite');
         }
       } else {
         logMessages.skippedTestcase(shortenLogMode, wsNum, test.title);
         skippedTestcase.push(test.title);
       }
-
     });
     wsNum--;
 
