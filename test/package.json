@@ -7,13 +7,16 @@
     "test": "npx cypress run",
     "moreTests": "cypress run",
     "single": "cypress run -s cypress/e2e/beforeHooks.cy.js",
+    "fail": "cypress run -s cypress/e2e/noScreenshot.cy.js",
     "cy:open": "npx cypress open"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cypress": "^13.15.0",
     "cypress-multi-reporters": "^1.6.3",
     "cypress-xray-junit-reporter": "file:.."
+  },
+  "devDependencies": {
+    "cypress": "^14.5.3"
   }
 }
