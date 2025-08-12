@@ -408,6 +408,30 @@ function addPropertyScreenshot(screenshot, properties) {
   })
 }
 
+function addPropertyMultipleScreenshots(screenshots, properties) {
+  if (!screenshots || screenshots.length === 0) {
+    return
+  }
+
+  const items = screenshots.map((screenshot) => ({
+    item: [
+      {
+        _attr: { name: screenshot.name },
+      },
+      screenshot.base64,
+    ],
+  }))
+
+  properties.push({
+    property: [
+      {
+        _attr: { name: "testrun_evidence" },
+      },
+      ...items,
+    ],
+  })
+}
+
 function getErrorMsg(testcase) {
   const failures = testcase.testcase.filter(function (item) {
     if (item.failure) {
@@ -431,15 +455,15 @@ function addPropertyMessage(message, properties) {
   }
 }
 
-function createFailureObject(path) {
-  const base64 = getBase64(path)
-  const name = path.split("/").pop()
+function createFailureObject(filePath) {
+  const base64 = getBase64(filePath)
+  const name = filePath.split(path.sep).pop()
   return { name, base64 }
 }
 
-function getFailureObject(screenshot, state) {
+function getFailureObject(screenshot, screenshotName, state) {
   if (screenshot?.relativeFoldersArray && screenshot?.screenshotsFolder && screenshot?.screenshotName && state !== "passed") {
-    const { relativeFoldersArray, screenshotsFolder, screenshotName } = screenshot
+    const { relativeFoldersArray, screenshotsFolder } = screenshot
     for (let i = 0; i < relativeFoldersArray.length; i++) {
       const pathParts = [screenshotsFolder, ...relativeFoldersArray.slice(i), screenshotName]
       const screenshotPath = path.join(...pathParts)
@@ -539,9 +563,14 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   }
 
   if (attachScreenshot) {
-    const failureObject = getFailureObject(test.screenshot, test.state, test.title)
-    if (failureObject) {
-      addPropertyScreenshot(failureObject, properties)
+    const failureObjects = []
+    // Move the last screenshot to the front of the array so the thumbnail displays the last screen capture.
+    for (let i = test.screenshot.screenshotArray.length - 1; i >= 0; i--) {
+      const testName = test.screenshot.screenshotArray[i]
+      failureObjects.push(getFailureObject(test.screenshot, testName, test.state))
+    }
+    if (failureObjects.length > 0) {
+      addPropertyMultipleScreenshots(failureObjects, properties)
     }
     const errMessage = getErrorMsg(testcase)
     addPropertyMessage(errMessage, properties)
