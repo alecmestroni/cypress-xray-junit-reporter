@@ -567,7 +567,8 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     // Move the last screenshot to the front of the array so the thumbnail displays the last screen capture.
     for (let i = test.screenshot.screenshotArray.length - 1; i >= 0; i--) {
       const testName = test.screenshot.screenshotArray[i]
-      failureObjects.push(getFailureObject(test.screenshot, testName, test.state))
+      const failureObj = getFailureObject(test.screenshot, testName, test.state)
+      if (failureObj) failureObjects.push(failureObj)
     }
     if (failureObjects.length > 0) {
       addPropertyMultipleScreenshots(failureObjects, properties)
