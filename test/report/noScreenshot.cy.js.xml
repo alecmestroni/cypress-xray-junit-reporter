@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="0.156" tests="2" failures="2">
-  <testsuite name="Root Suite" timestamp="2024-11-07T09:44:20" tests="0" file="noScreenshot.cy.js" time="0.000" failures="0">
+<testsuites name="Mocha Tests" time="0.128" tests="2" failures="2">
+  <testsuite name="Root Suite" timestamp="2025-08-12T15:04:00" tests="0" file="noScreenshot.cy.js" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="disable screenshotOnRunFailure" timestamp="2024-11-07T09:44:20" tests="1" time="0.105" failures="0">
+  <testsuite name="disable screenshotOnRunFailure" timestamp="2025-08-12T15:04:00" tests="1" time="0.087" failures="0">
   </testsuite>
-  <testsuite name="disable and enable screenshotOnRunFailure" timestamp="2024-11-07T09:44:20" tests="1" time="0.021" failures="0">
+  <testsuite name="disable and enable screenshotOnRunFailure" timestamp="2025-08-12T15:04:00" tests="1" time="0.025" failures="0">
   </testsuite>
 </testsuites>
