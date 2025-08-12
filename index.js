@@ -562,7 +562,7 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     }
   }
 
-  if (attachScreenshot) {
+  if (attachScreenshot && test.screenshot?.screenshotArray) {
     const failureObjects = []
     // Move the last screenshot to the front of the array so the thumbnail displays the last screen capture.
     for (let i = test.screenshot.screenshotArray.length - 1; i >= 0; i--) {
