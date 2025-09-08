@@ -242,6 +242,12 @@ function CypressXrayJunitReporter(runner, options) {
     suites.forEach((suite) => {
       logMessages.analyzingSuite(shortenLogMode, wsNum, suite.title)
 
+      if (isInvalidSuite(suite)) {
+        // Skip invalid/empty suites (e.g., describe blocks with no tests or nested suites)
+        logMessages.endSuite(wsNum, suite.title)
+        return
+      }
+
       if (suite.suites.length && !suite.tests.length) {
         processSuites(suite.suites)
         testsuiteNum++
