@@ -1,73 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="60.212" tests="2" failures="1">
-  <testsuite name="Root Suite" timestamp="2025-08-12T15:02:47" tests="0" file="beforeHooks.cy.js" time="0.000" failures="0">
+<testsuites name="Mocha Tests" time="6.482" tests="2" failures="1">
+  <testsuite name="Root Suite" timestamp="2025-10-08T16:24:02" tests="0" file="beforeHooks.cy.js" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="A Test" timestamp="2025-08-12T15:03:47" tests="2" time="0.000" failures="1">
-    <testcase name="A Test - IT" time="60.169" classname="A Test">
-      <failure message="Timed out after waiting `60000ms` for your remote page to load.
+  <testsuite name="A Test" timestamp="2025-10-08T16:24:09" tests="2" time="0.000" failures="1">
+    <testcase name="A Test - IT" time="4.360" classname="A Test">
+      <failure message="Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
 
-Your page did not fire its `load` event within `60000ms`.
-
-You can try increasing the `pageLoadTimeout` value in `Users\YYI4412\Desktop\Project\cypress-xray-junit-reporter\test\cypress.config.js` to wait longer.
-
-Browsers will not fire the `load` event until all stylesheets and scripts are done downloading.
-
-When this `load` event occurs, Cypress will continue running commands.
-
-Because this error occurred during a `before all` hook we are skipping all of the remaining tests." type="CypressError"><![CDATA[CypressError: Timed out after waiting `60000ms` for your remote page to load.
-
-Your page did not fire its `load` event within `60000ms`.
-
-You can try increasing the `pageLoadTimeout` value in `Users\YYI4412\Desktop\Project\cypress-xray-junit-reporter\test\cypress.config.js` to wait longer.
-
-Browsers will not fire the `load` event until all stylesheets and scripts are done downloading.
-
-When this `load` event occurs, Cypress will continue running commands.
+Because this error occurred during a `before all` hook we are skipping all of the remaining tests." type="AssertionError"><![CDATA[AssertionError: Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
 
 Because this error occurred during a `before all` hook we are skipping all of the remaining tests.
-    at timedOutWaitingForPageLoad (http://localhost:58502/__cypress/runner/cypress_runner.js:134082:64)
-    at <unknown> (http://localhost:58502/__cypress/runner/cypress_runner.js:135076:16)
-    at tryCatcher (http://localhost:58502/__cypress/runner/cypress_runner.js:1777:23)
-    at <unknown> (http://localhost:58502/__cypress/runner/cypress_runner.js:4156:41)
-    at tryCatcher (http://localhost:58502/__cypress/runner/cypress_runner.js:1777:23)
-    at Promise._settlePromiseFromHandler (http://localhost:58502/__cypress/runner/cypress_runner.js:1489:31)
-    at Promise._settlePromise (http://localhost:58502/__cypress/runner/cypress_runner.js:1546:18)
-    at Promise._settlePromise0 (http://localhost:58502/__cypress/runner/cypress_runner.js:1591:10)
-    at Promise._settlePromises (http://localhost:58502/__cypress/runner/cypress_runner.js:1667:18)
-    at _drainQueueStep (http://localhost:58502/__cypress/runner/cypress_runner.js:2377:12)
-    at _drainQueue (http://localhost:58502/__cypress/runner/cypress_runner.js:2370:9)
-    at Async._drainQueues (http://localhost:58502/__cypress/runner/cypress_runner.js:2386:5)
-    at Async.drainQueues (http://localhost:58502/__cypress/runner/cypress_runner.js:2256:14)
-From Your Spec Code:
-    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:2:7)]]></failure>
+    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:3:35)]]></failure>
       <properties>
         <property name="test_key" value="EPM-00000"/>
-        <property name="testrun_comment"><![CDATA[{color:#ff0000}CypressError: Timed out after waiting `60000ms` for your remote page to load.
-
-Your page did not fire its `load` event within `60000ms`.
-
-You can try increasing the `pageLoadTimeout` value in `Users\YYI4412\Desktop\Project\cypress-xray-junit-reporter\test\cypress.config.js` to wait longer.
-
-Browsers will not fire the `load` event until all stylesheets and scripts are done downloading.
-
-When this `load` event occurs, Cypress will continue running commands.
+        <property name="testrun_comment"><![CDATA[{color:#ff0000}AssertionError: Timed out retrying after 4000ms: Expected to find element: `non-existent-element`, but never found it.
 
 Because this error occurred during a `before all` hook we are skipping all of the remaining tests.
-    at timedOutWaitingForPageLoad (http://localhost:58502/__cypress/runner/cypress_runner.js:134082:64)
-    at <unknown> (http://localhost:58502/__cypress/runner/cypress_runner.js:135076:16)
-    at tryCatcher (http://localhost:58502/__cypress/runner/cypress_runner.js:1777:23)
-    at <unknown> (http://localhost:58502/__cypress/runner/cypress_runner.js:4156:41)
-    at tryCatcher (http://localhost:58502/__cypress/runner/cypress_runner.js:1777:23)
-    at Promise._settlePromiseFromHandler (http://localhost:58502/__cypress/runner/cypress_runner.js:1489:31)
-    at Promise._settlePromise (http://localhost:58502/__cypress/runner/cypress_runner.js:1546:18)
-    at Promise._settlePromise0 (http://localhost:58502/__cypress/runner/cypress_runner.js:1591:10)
-    at Promise._settlePromises (http://localhost:58502/__cypress/runner/cypress_runner.js:1667:18)
-    at _drainQueueStep (http://localhost:58502/__cypress/runner/cypress_runner.js:2377:12)
-    at _drainQueue (http://localhost:58502/__cypress/runner/cypress_runner.js:2370:9)
-    at Async._drainQueues (http://localhost:58502/__cypress/runner/cypress_runner.js:2386:5)
-    at Async.drainQueues (http://localhost:58502/__cypress/runner/cypress_runner.js:2256:14)
-From Your Spec Code:
-    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:2:7){color}]]></property>
+    at Context.eval (webpack://test/./cypress/e2e/beforeHooks.cy.js:3:35){color}]]></property>
       </properties>
     </testcase>
   </testsuite>

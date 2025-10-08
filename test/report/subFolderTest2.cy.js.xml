@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="0.240" tests="9" failures="0">
-  <testsuite name="Root Suite" timestamp="2025-08-12T15:04:05" tests="0" file="subFolderTest2.cy.js" time="0.000" failures="0">
+<testsuites name="Mocha Tests" time="0.401" tests="9" failures="0">
+  <testsuite name="Root Suite" timestamp="2025-10-08T16:24:25" tests="0" file="subFolderTest2.cy.js" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="testSuite 0" timestamp="2025-08-12T15:04:05" tests="1" time="0.227" failures="0">
-    <testcase name="testCase 0.1" time="0.020" classname="testSuite 0">
+  <testsuite name="testSuite 0" timestamp="2025-10-08T16:24:25" tests="1" time="0.384" failures="0">
+    <testcase name="testCase 0.1" time="0.041" classname="testSuite 0">
       <properties>
         <property name="test_key" value="test0.1"/>
       </properties>
     </testcase>
   </testsuite>
-  <testsuite name="testSuite 1" timestamp="2025-08-12T15:04:05" tests="1" time="0.029" failures="0">
-    <testcase name="testCase 1.1" time="0.013" classname="testSuite 0 testSuite 1">
+  <testsuite name="testSuite 1" timestamp="2025-10-08T16:24:25" tests="1" time="0.056" failures="0">
+    <testcase name="testCase 1.1" time="0.022" classname="testSuite 0 testSuite 1">
       <properties>
         <property name="test_key" value="test1.1"/>
       </properties>
     </testcase>
   </testsuite>
-  <testsuite name="testSuite 2" timestamp="2025-08-12T15:04:05" tests="3" time="0.074" failures="0">
+  <testsuite name="testSuite 2" timestamp="2025-10-08T16:24:25" tests="3" time="0.114" failures="0">
   </testsuite>
-  <testsuite name="testSuite 3" timestamp="2025-08-12T15:04:05" tests="2" time="0.045" failures="0">
-    <testcase name="testCase 3.1" time="0.010" classname="testSuite 0 testSuite 3">
+  <testsuite name="testSuite 3" timestamp="2025-10-08T16:24:25" tests="2" time="0.079" failures="0">
+    <testcase name="testCase 3.1" time="0.018" classname="testSuite 0 testSuite 3">
       <properties>
         <property name="test_key" value="test3.1"/>
       </properties>
     </testcase>
-    <testcase name="testCase 3.2" time="0.012" classname="testSuite 0 testSuite 3">
+    <testcase name="testCase 3.2" time="0.018" classname="testSuite 0 testSuite 3">
       <properties>
         <property name="test_key" value="test3.2"/>
       </properties>
     </testcase>
   </testsuite>
-  <testsuite name="testSuite 4" timestamp="2025-08-12T15:04:05" tests="1" time="0.022" failures="0">
-    <testcase name="testCase 4.1" time="0.010" classname="testSuite 0 testSuite 4">
+  <testsuite name="testSuite 4" timestamp="2025-10-08T16:24:25" tests="1" time="0.043" failures="0">
+    <testcase name="testCase 4.1" time="0.015" classname="testSuite 0 testSuite 4">
       <properties>
         <property name="test_key" value="test4.1.1"/>
       </properties>
     </testcase>
   </testsuite>
-  <testsuite name="testSuite 4" timestamp="2025-08-12T15:04:05" tests="1" time="0.025" failures="0">
-    <testcase name="testCase 4.1" time="0.012" classname="testSuite 0 testSuite 4">
+  <testsuite name="testSuite 4" timestamp="2025-10-08T16:24:25" tests="1" time="0.027" failures="0">
+    <testcase name="testCase 4.1" time="0.019" classname="testSuite 0 testSuite 4">
       <properties>
         <property name="test_key" value="test4.1.2"/>
       </properties>
