@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "cy:open": "npx cypress open",
     "test": "npx cypress run",
     "moreTests": "cypress run",
+    "requiredJiraKey": "cypress run --config-file requiredJiraKey.config.js",
     "single": "cypress run -s cypress/e2e/beforeHooks.cy.js",
-    "fail": "cypress run -s cypress/e2e/fail.cy.js",
-    "cy:open": "npx cypress open"
+    "fail": "cypress run -s cypress/e2e/fail.cy.js"
   },
   "author": "",
   "license": "MIT",

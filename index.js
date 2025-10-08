@@ -12,6 +12,7 @@ const md5 = require("md5")
 const stripAnsi = require("strip-ansi")
 const createStatsCollector = require("mocha/lib/stats-collector")
 const logMessages = require("./src/logMessages")
+const { EXIT_CODES } = require("./src/exitCodes")
 const { v4: uuidv4 } = require("uuid")
 
 // Save timer references so that times are correct even if Date is stubbed.
@@ -62,6 +63,7 @@ function configureDefaults(options) {
   config.mochaFile = getSetting(config.mochaFile, "test-results.xml")
   config.jenkinsMode = getSetting(config.jenkinsMode, false)
   config.xrayMode = getSetting(config.xrayMode, true)
+  config.requiredJiraKey = getSetting(config.requiredJiraKey, false)
   config.shortenLogMode = getSetting(config.shortenLogMode, false)
   config.attachScreenshot = getSetting(config.attachScreenshot, false)
   config.toConsole = !!config.toConsole
@@ -163,6 +165,7 @@ function CypressXrayJunitReporter(runner, options) {
   this._options = configureDefaults(options)
   const shortenLogMode = this._options.shortenLogMode
   const xrayMode = this._options.xrayMode
+  const requiredJiraKey = this._options.requiredJiraKey
   this._runner = runner
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle
   this._antId = 0
@@ -216,7 +219,7 @@ function CypressXrayJunitReporter(runner, options) {
           testsuites.push(this.getTestsuiteData(suite))
           findSuite(test.parent.title, testOrderedByUUID.indexOf(uuidSuite)).push(testCase)
         } else {
-          throw new Error("GENERIC ERROR while parsing suite")
+          throw new Error("ERROR", EXIT_CODES.XRAY_CONFIG_ERROR, `XRAY_CONFIG_ERROR <${test.title}>`)
         }
       } else {
         logMessages.skippedTestcase(shortenLogMode, wsNum, test.title)
@@ -227,6 +230,11 @@ function CypressXrayJunitReporter(runner, options) {
 
     if (missingJiraKey.length > 0) {
       logMessages.missingError(shortenLogMode, wsNum)
+      if (requiredJiraKey) {
+        console.error(`\n   JIRA keys are required but missing in ${missingJiraKey.length} test case(s).`)
+        console.error(`   Set requiredJiraKey: false in reporter options to disable this check. Exiting with code 104...`)
+        process.exit(EXIT_CODES.MISSING_JIRA_KEYS)
+      }
       missingJiraKey = []
     }
     if (skippedTestcase.length > 0) {
@@ -257,7 +265,7 @@ function CypressXrayJunitReporter(runner, options) {
         processTests(suite.tests)
         processSuites(suite.suites)
       } else {
-        throw new Error("Config Error")
+        throw new Error("ERROR", EXIT_CODES.XRAY_CONFIG_ERROR, `XRAY_CONFIG_ERROR <${test.title}>`)
       }
 
       logMessages.endSuite(wsNum, suite.title)
@@ -615,7 +623,13 @@ CypressXrayJunitReporter.prototype.removeInvalidCharacters = function (input) {
  * @param {Array.<Object>} testsuites - a list of xml configs
  */
 CypressXrayJunitReporter.prototype.flush = function (testsuites) {
-  this._xml = this.getXml(testsuites)
+  try {
+    this._xml = this.getXml(testsuites)
+  } catch (exc) {
+    console.error("XML generation error: Failed to generate XML content")
+    console.error(`Details: ${exc.message}`)
+    process.exit(EXIT_CODES.XML_GENERATION_ERROR)
+  }
 
   const reportFilename = this.formatReportFilename(this._xml, testsuites)
 
@@ -734,7 +748,9 @@ CypressXrayJunitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
     try {
       fs.writeFileSync(filePath, xml, "utf-8")
     } catch (exc) {
-      debug("problem writing results: " + exc)
+      console.error(`XML generation error: Failed to write report to ${filePath}`)
+      console.error(`Details: ${exc.message}`)
+      process.exit(EXIT_CODES.XML_GENERATION_ERROR)
     }
     debug("results written successfully")
   }

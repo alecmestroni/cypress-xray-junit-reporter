@@ -58,6 +58,8 @@ $ npm install -g cypress-xray-junit-reporter
 
 With this custom report will be easy for you to connect your tests with your JIRA test issue, creating test execution report compatible with XRAY.
 
+**NOTE: Test cases without JIRA keys will be excluded from the report by default. To enforce mandatory JIRA keys and receive an error code when they're missing, enable the `requiredJiraKey` option, Cypress will exit with code 104 if any test lacks a JIRA key.**
+
 ### 1. Naming the output file
 
 By default if a file test-report.xml already exists it will be overwritten.  
@@ -80,24 +82,24 @@ In addition to `[hash]`, these can also be used:
 This example shows how to install the plugin for e2e testing type. Read Cypress configuration docs for further info.
 
 ```javascript
-const { defineConfig } = require('cypress')
+const { defineConfig } = require("cypress")
 module.exports = defineConfig({
-	deleteVideoOnPassed: true,
-	betterRetries: true,
-	reporter: 'cypress-xray-junit-reporter',
-	reporterOptions: {
-		mochaFile: './report/[suiteName].xml',
-		useFullSuiteTitle: false,
-		jenkinsMode: true,
-		xrayMode: true, // if JiraKey are set correctly inside the test the XML report will contain the JiraKey value
-		attachScreenshot: true, // if a test fails, the screenshot will be attached to the XML report and imported into xray
-	},
-	e2e: {
-		setupNodeEvents(on, config) {
-			require('cypress-xray-junit-reporter/plugin')(on, config, {}) // also needed
-			return config
-		},
-	},
+  deleteVideoOnPassed: true,
+  betterRetries: true,
+  reporter: "cypress-xray-junit-reporter",
+  reporterOptions: {
+    mochaFile: "./report/[suiteName].xml",
+    useFullSuiteTitle: false,
+    jenkinsMode: true,
+    xrayMode: true, // if JiraKey are set correctly inside the test the XML report will contain the JiraKey value
+    attachScreenshot: true, // if a test fails, the screenshot will be attached to the XML report and imported into xray
+  },
+  e2e: {
+    setupNodeEvents(on, config) {
+      require("cypress-xray-junit-reporter/plugin")(on, config, {}) // also needed
+      return config
+    },
+  },
 })
 ```
 
@@ -106,7 +108,7 @@ module.exports = defineConfig({
 At the top of your support file (usually cypress/support/e2e.js for e2e testing type):
 
 ```javascript
-import 'cypress-xray-junit-reporter/support'
+import "cypress-xray-junit-reporter/support"
 ```
 
 ### 3. Setting up your jiraKeys
@@ -114,10 +116,10 @@ import 'cypress-xray-junit-reporter/support'
 `cypress/e2e/myFirstTest.cy.js`
 
 ```javascript
-describe('My First Test', () => {
-	it('Does not do much!', { jiraKey: 'CALC-1234' }, () => {
-		expect(true).to.equal(true)
-	})
+describe("My First Test", () => {
+  it("Does not do much!", { jiraKey: "CALC-1234" }, () => {
+    expect(true).to.equal(true)
+  })
 })
 ```
 
@@ -199,17 +201,38 @@ You can also configure the `testsuites.name` attribute by setting `reporterOptio
 
 ## Extra reporterOptions list (Advanced options)
 
-| Configuration Option             | Default Value   | Description                                                                                          |
-| -------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| `testCaseSwitchClassnameAndName` | `false`         | When enabled, switches the order of name and classname values.                                       |
-| `testsuitesTitle`                | `"Mocha Tests"` | Customizes the name for the XML `testsuites` tag, serving as a placeholder for `mochaFile` names.    |
-| `rootSuiteTitle`                 | `"Root Suite"`  | Customizes the name for the XML `rootsuites` tag, serving as a placeholder for `mochaFile` names.    |
-| `useFullSuiteTitle`              | `false`         | If `true`, displays nested suite titles with the entire suite lineage.                               |
-| `outputs`                        | `false`         | If `true`, includes console output and console error output in the XML report.                       |
-| `toConsole`                      | `false`         | If `true`, logs the produced XML to the console.                                                     |
-| `jenkinsMode`                    | `false`         | When enabled, generates XML for improved display in Jenkins.                                         |
-| `jenkinsClassnamePrefix`         | `undefined`     | Adds a prefix to a classname when running in `jenkinsMode`.                                          |
-| `suiteTitleSeparatedBy`          | ` ` (space)     | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode). |
+| Configuration Option             | Default Value   | Description                                                                                                                                  |
+| -------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `testCaseSwitchClassnameAndName` | `false`         | When enabled, switches the order of name and classname values.                                                                               |
+| `testsuitesTitle`                | `"Mocha Tests"` | Customizes the name for the XML `testsuites` tag, serving as a placeholder for `mochaFile` names.                                            |
+| `rootSuiteTitle`                 | `"Root Suite"`  | Customizes the name for the XML `rootsuites` tag, serving as a placeholder for `mochaFile` names.                                            |
+| `useFullSuiteTitle`              | `false`         | If `true`, displays nested suite titles with the entire suite lineage.                                                                       |
+| `outputs`                        | `false`         | If `true`, includes console output and console error output in the XML report.                                                               |
+| `toConsole`                      | `false`         | If `true`, logs the produced XML to the console.                                                                                             |
+| `jenkinsMode`                    | `false`         | When enabled, generates XML for improved display in Jenkins.                                                                                 |
+| `jenkinsClassnamePrefix`         | `undefined`     | Adds a prefix to a classname when running in `jenkinsMode`.                                                                                  |
+| `suiteTitleSeparatedBy`          | ` ` (space)     | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode).                                         |
+| `requiredJiraKey`                | `false`         | When enabled, enforces that all test cases must have a JIRA key. Tests without JIRA keys will cause the process to exit with error code 104. |
+
+## Error Codes
+
+The reporter uses specific exit codes to indicate different types of errors:
+
+| Exit Code | Description                                                                            |
+| --------- | -------------------------------------------------------------------------------------- |
+| `0`       | Success - All tests processed successfully                                             |
+| `102`     | XRAY Configuration Error - Invalid suite structure or configuration                    |
+| `103`     | XML Generation Error - Failed to generate or write XML report                          |
+| `104`     | Missing JIRA Keys - Required JIRA keys are missing (when `requiredJiraKey` is enabled) |
+
+### Using requiredJiraKey
+
+When `requiredJiraKey` is set to `true`, the reporter will:
+
+- Check that all test cases have a valid JIRA key
+- Log warnings for tests missing JIRA keys
+- Display a clear error message showing how many test cases are missing JIRA keys
+- Exit with code 104 if any JIRA keys are missing in the current test suite
 
 ## Logged Results
 
@@ -450,10 +473,10 @@ Reporter not found! cypress-xray-junit-reporter
 Set them as other cypress options inside the `cypress.config.js`:
 
 ```javascript
-const { defineConfig } = require('cypress')
+const { defineConfig } = require("cypress")
 module.exports = defineConfig({
-	deleteVideoOnPassed: true,
-	betterRetries: true,
+  deleteVideoOnPassed: true,
+  betterRetries: true,
 })
 ```
 
