@@ -4,3 +4,6 @@ video
 fixtures
 .vscode
 test.js
+
+# npm pack output
+*.tgz

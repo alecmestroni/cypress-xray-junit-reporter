@@ -1,3 +1,4 @@
+import { EventEmitter } from "events";
 export = CypressXrayJunitReporter;
 /**
  * JUnit reporter for mocha.js.
@@ -17,7 +18,6 @@ declare class CypressXrayJunitReporter {
     _options: any;
     _runner: EventEmitter;
     _generateSuiteTitle: typeof fullSuiteTitle;
-    _antId: number;
     _Date: any;
     _testsuites: any[];
     _onSuiteBegin: (suite: any) => void;
@@ -41,6 +41,11 @@ declare class CypressXrayJunitReporter {
      * @returns {string} without invalid characters
      */
     removeInvalidCharacters(input: string): string;
+    /**
+     * Redacts secrets and removes invalid XML characters from text coming from the tests.
+     */
+    cleanText(input: string): string;
+    _redact: (text: string) => string;
     /**
      * Writes xml to disk and ouputs content if "toConsole" is set to true.
      * @param {Array.<Object>} testsuites - a list of xml configs

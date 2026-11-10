@@ -1,3 +1,3 @@
-/* global Cypress, cy, beforeEach, afterEach, before */
+/* global Cypress, cy, afterEach, before */
 
-module.exports = require("./src/support")(Cypress, cy, afterEach);
+module.exports = require("./src/support")(Cypress, cy, afterEach, before);

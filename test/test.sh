@@ -1,20 +1,23 @@
 #!/bin/bash
 
-# Script to Handle the test cases failures to check that the plugin is working correctly or not.
+# Runs an npm command inside ./test and checks that it exits with the expected code.
+# Usage: sh test/test.sh "<npm args>" <expected exit code>
+#   e.g. sh test/test.sh test 16               -> 16 failing tests in the sample specs
+#        sh test/test.sh "run requiredJiraKey" 104 -> reporter exits with 104 on missing jira keys
 
-cd test
-npm $1
+NPM_ARGS=$1
+EXPECTED_EXIT_CODE=${2:-0}
+
+cd "$(dirname "$0")" || exit 1
+npm $NPM_ARGS
 EXIT_CODE=$?
 
-echo "Exit code: $EXIT_CODE"
+echo "Exit code: $EXIT_CODE (expected: $EXPECTED_EXIT_CODE)"
 
-# 16 tests should fail when running npm test
-# 104 is the exit code when requiredJiraKey is set to true in config and some test miss the jiraKey
-if [ $EXIT_CODE -eq 16 ] || [ $EXIT_CODE -eq 104 ]; then
+if [ "$EXIT_CODE" -eq "$EXPECTED_EXIT_CODE" ]; then
     echo "Tests passed successfully."
-    EXIT_CODE=0
-else
-    echo "Plugin failed."
+    exit 0
 fi
 
-exit $EXIT_CODE
+echo "Plugin failed."
+exit 1

@@ -6,27 +6,29 @@ const { reporters } = require("mocha")
 const { Base } = reporters
 const fs = require("fs")
 const path = require("path")
+const crypto = require("crypto")
 const debug = require("debug")("cypress-xray-junit-reporter")
-const mkdirp = require("mkdirp")
-const md5 = require("md5")
 const stripAnsi = require("strip-ansi")
-const createStatsCollector = require("mocha/lib/stats-collector")
+const statsCollector = require("mocha/lib/stats-collector")
 const logMessages = require("./src/logMessages")
 const { EXIT_CODES } = require("./src/exitCodes")
-const { v4: uuidv4 } = require("uuid")
+const { MISSING_JIRA_KEYS_MARKER, parseJiraKeyFromConfig } = require("./src/jiraKey")
+const { createRedactor, escapeJiraMarkup } = require("./src/sanitize")
+
+// mocha <= 11 exports the function itself (CommonJS), mocha 12 is ESM and exports it by name
+const createStatsCollector =
+  typeof statsCollector === "function" ? statsCollector : statsCollector.createStatsCollector || statsCollector.default
 
 // Save timer references so that times are correct even if Date is stubbed.
 // See https://github.com/mochajs/mocha/issues/237
 const startTime = global.Date
 
 // A subset of invalid characters as defined in http://www.w3.org/TR/xml/#charsets that can occur in e.g. stacktraces
-// regex lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
-const INVALID_CHARACTERS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uD800-\uDFFF\uFDD0-\uFDFF\uFFFF\uC008]/g //eslint-disable-line no-control-regex
-
-const testTotals = {
-  registered: 0,
-  skipped: 0,
-}
+// originally lifted from https://github.com/MylesBorins/xml-sanitizer/ (licensed MIT)
+// Characters not allowed in XML 1.0: control characters, lone surrogates (emoji and other astral
+// characters, i.e. valid surrogate pairs, are kept), and the noncharacters U+FDD0-U+FDEF, U+FFFE, U+FFFF
+const INVALID_CHARACTERS_REGEX =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007f-\u0084\u0086-\u009f\uFDD0-\uFDEF\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g //eslint-disable-line no-control-regex
 
 // number of whitespace indentation characters
 let wsNum = 0
@@ -34,6 +36,9 @@ let wsNum = 0
 let testOrderedByUUID = []
 
 let skippedTestcase = []
+
+// Test objects (not titles, which may be duplicated across suites) that have no jira key
+let missingJiraKey = new Set()
 
 function findReporterOptions(options) {
   debug("Checking for options in", options)
@@ -67,13 +72,16 @@ function configureDefaults(options) {
   config.shortenLogMode = getSetting(config.shortenLogMode, false)
   config.attachScreenshot = getSetting(config.attachScreenshot, false)
   config.toConsole = !!config.toConsole
+  config.redactSecrets = getSetting(config.redactSecrets, true)
+  config.redactPatterns = getSetting(config.redactPatterns, [])
   config.rootSuiteTitle = config.rootSuiteTitle || "Root Suite"
   config.testsuitesTitle = config.testsuitesTitle || "Mocha Tests"
-  config.suiteTitleSeparatedBy = config.suiteTitleSeparatedBy || " "
 
   if (config.jenkinsMode) {
     updateOptionsForJenkinsMode(config)
   }
+  // Apply the generic default only after jenkins mode had a chance to set its own ("." separator)
+  config.suiteTitleSeparatedBy = config.suiteTitleSeparatedBy || " "
   return config
 }
 
@@ -152,97 +160,98 @@ function getJenkinsClassname(test, options) {
 
 /**
  * JUnit reporter for mocha.js.
+ * A class extending Base: mocha 12 Base is an ES class and cannot be called as a function.
  * @module cypress-xray-junit-reporter
  * @param {EventEmitter} runner - the test runner
  * @param {Object} options - mocha options
  */
-function CypressXrayJunitReporter(runner, options) {
-  createStatsCollector(runner)
+class CypressXrayJunitReporter extends Base {
+  constructor(runner, options) {
+    createStatsCollector(runner)
+    // get functionality from the Base reporter
+    super(runner)
+    initReporter.call(this, runner, options)
+  }
+}
 
-  // Reset total tests counters
-  testTotals.registered = 0
-  testTotals.skipped = 0
+function initReporter(runner, options) {
   this._options = configureDefaults(options)
   const shortenLogMode = this._options.shortenLogMode
   const xrayMode = this._options.xrayMode
   const requiredJiraKey = this._options.requiredJiraKey
   this._runner = runner
   this._generateSuiteTitle = this._options.useFullSuiteTitle ? fullSuiteTitle : defaultSuiteTitle
-  this._antId = 0
   this._Date = options?.Date || startTime
+  this._redact = createRedactor(this._options.redactSecrets, this._options.redactPatterns)
 
   const testsuites = []
   this._testsuites = testsuites
 
-  function findSuite(suiteTitle, suiteNumber) {
-    if (typeof suiteTitle === "string" && typeof suiteNumber === "number") {
-      // control on the name of the passed suite
-      if (testsuites[suiteNumber]?.testsuite[0]._attr.name === suiteTitle) {
-        // if it corresponds to the passed suite title, return it
-        return testsuites[suiteNumber]?.testsuite
-      } else if (suiteTitle !== "" && testsuites[suiteNumber]?.testsuite[0]._attr.name !== "Root Suite") {
-        throw new Error(
-          "Suite counting error: suite title not corresponding.\nExpect: " + suiteTitle + ", got: " + testsuites[suiteNumber]?.testsuite[0]._attr.name
-        )
-      }
-    } else if (suiteNumber === undefined) {
-      return testsuites[testsuites.length - 1].testsuite
-    } else {
-      throw new Error("Invalid argument passed to findSuite\nPassed: " + suiteTitle + " & " + suiteNumber)
+  // testsuites and testOrderedByUUID are always pushed together, so they share indexes
+  const findSuite = (suite) => {
+    const index = testOrderedByUUID.indexOf(suite.uuid)
+    if (index === -1) {
+      return undefined
     }
+    return testsuites[index].testsuite
+  }
+
+  const registerSuite = (suite) => {
+    const uuidSuite = crypto.randomUUID()
+    suite.uuid = uuidSuite
+    testOrderedByUUID.push(uuidSuite)
+    testsuites.push(this.getTestsuiteData(suite))
   }
 
   const processTests = (tests) => {
     wsNum++
 
     tests.forEach((test) => {
-      const err = test.err
-      const testCase = this.getTestcaseData(test, err)
-      if (test.state !== "skipped" && test.state !== "pending") {
-        if (test.parent.uuid) {
-          if (missingJiraKey.includes(test.title)) {
-            logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`)
-            logMessages.skippedTestcase(shortenLogMode, wsNum, test.title)
-            skippedTestcase.push(test.title)
-          } else {
-            logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title)
-            findSuite(test.parent.title, testOrderedByUUID.indexOf(test.parent.uuid)).push(testCase)
-          }
-        } else if (!test.parent.uuid && test.state == "failed") {
-          // if test.parent.uuid is missing the suite hasn't been initialized correctly
-          // if its a failure, it is caused by before/beforeEach fail
-          logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title)
-          const suite = test.parent
-          const uuidSuite = uuidv4()
-          suite.uuid = uuidSuite
-          testOrderedByUUID.push(uuidSuite)
-          testsuites.push(this.getTestsuiteData(suite))
-          findSuite(test.parent.title, testOrderedByUUID.indexOf(uuidSuite)).push(testCase)
-        } else {
-          throw new Error("ERROR", EXIT_CODES.XRAY_CONFIG_ERROR, `XRAY_CONFIG_ERROR <${test.title}>`)
-        }
-      } else {
+      if (test.state === "skipped" || test.state === "pending") {
         logMessages.skippedTestcase(shortenLogMode, wsNum, test.title)
         skippedTestcase.push(test.title)
+        return
       }
+
+      const testCase = this.getTestcaseData(test, test.err)
+      if (missingJiraKey.has(test)) {
+        logMessages.warning(shortenLogMode, wsNum, `Missing jira key in testcase: ${test.title}`)
+        logMessages.skippedTestcase(shortenLogMode, wsNum, test.title)
+        skippedTestcase.push(test.title)
+        return
+      }
+
+      if (!test.parent.uuid) {
+        if (test.state !== "failed") {
+          throw new Error(`XRAY_CONFIG_ERROR (${EXIT_CODES.XRAY_CONFIG_ERROR}): suite not initialized for testcase <${test.title}>`)
+        }
+        // if test.parent.uuid is missing the suite hasn't been initialized correctly:
+        // a failure here is caused by a before/beforeEach hook failing
+        registerSuite(test.parent)
+      }
+
+      const testsuite = findSuite(test.parent)
+      if (!testsuite) {
+        throw new Error(`XRAY_CONFIG_ERROR (${EXIT_CODES.XRAY_CONFIG_ERROR}): suite not found for testcase <${test.title}>`)
+      }
+      logMessages.analyzedTestcase(shortenLogMode, wsNum, test.title)
+      testsuite.push(testCase)
     })
     wsNum--
 
-    if (missingJiraKey.length > 0) {
+    if (missingJiraKey.size > 0) {
       logMessages.missingError(shortenLogMode, wsNum)
       if (requiredJiraKey) {
-        console.error(`\n   JIRA keys are required but missing in ${missingJiraKey.length} test case(s).`)
-        console.error(`   Set requiredJiraKey: false in reporter options to disable this check. Exiting with code 104...`)
-        process.exit(EXIT_CODES.MISSING_JIRA_KEYS)
+        // Fallback when the support file is not loaded: the spec has already run, exit before writing its report
+        exitOnMissingJiraKeys([...missingJiraKey])
       }
-      missingJiraKey = []
+      missingJiraKey.clear()
     }
     if (skippedTestcase.length > 0) {
       logMessages.skippedError(shortenLogMode, skippedTestcase)
       skippedTestcase = []
     }
   }
-  let testsuiteNum = 0
   const processSuites = (suites) => {
     logMessages.foundingSuite(shortenLogMode, wsNum, suites.length)
 
@@ -250,43 +259,35 @@ function CypressXrayJunitReporter(runner, options) {
     suites.forEach((suite) => {
       logMessages.analyzingSuite(shortenLogMode, wsNum, suite.title)
 
-      if (isInvalidSuite(suite)) {
-        // Skip invalid/empty suites (e.g., describe blocks with no tests or nested suites)
-        logMessages.endSuite(wsNum, suite.title)
-        return
+      // Skip invalid/empty suites (e.g., describe blocks with no tests or nested suites)
+      if (!isInvalidSuite(suite)) {
+        if (suite.tests.length) {
+          processTests(suite.tests)
+        }
+        if (suite.suites.length) {
+          processSuites(suite.suites)
+        }
       }
 
-      if (suite.suites.length && !suite.tests.length) {
-        processSuites(suite.suites)
-        testsuiteNum++
-      } else if (suite.tests.length && !suite.suites.length) {
-        processTests(suite.tests)
-      } else if (suite.suites.length && suite.tests.length) {
-        processTests(suite.tests)
-        processSuites(suite.suites)
-      } else {
-        throw new Error("ERROR", EXIT_CODES.XRAY_CONFIG_ERROR, `XRAY_CONFIG_ERROR <${test.title}>`)
-      }
-
-      logMessages.endSuite(wsNum, suite.title)
+      logMessages.endSuite(shortenLogMode, wsNum, suite.title)
     })
     wsNum--
   }
 
-  function mapSuites(suite, testTotals) {
-    const suites = suite.suites.reduce((acc, testsuite) => {
-      const mappedSuites = mapSuites(testsuite, testTotals)
-      if (mappedSuites) {
-        acc.push(mappedSuites)
-      }
-      return acc
-    }, [])
-    const mappedSuite = { ...suite, suites }
-    return mappedSuite
-  }
-
-  // get functionality from the Base reporter
-  Base.call(this, runner)
+  // Fail fast: Cypress only sends the test config (jiraKey) to the reporter after each test ends,
+  // so the check before any test runs is done by the support file (root before hook), which fails
+  // with a marked error. Exit as soon as that failure arrives.
+  this._runner.on("fail", function (runnable, err) {
+    const message = err && String(err.message)
+    if (xrayMode && requiredJiraKey && message && message.includes(MISSING_JIRA_KEYS_MARKER)) {
+      // Drop the marker and the "Because this error occurred during a `before all` hook..." note added by Cypress
+      const details = message.replace(MISSING_JIRA_KEYS_MARKER, "").split("Because this error occurred")[0].trim()
+      exitWithError(
+        ["", ...details.split("\n").map((line) => `   ${line}`), MISSING_JIRA_KEYS_HINT],
+        EXIT_CODES.MISSING_JIRA_KEYS
+      )
+    }
+  })
 
   // remove old results
   this._runner.on(
@@ -295,6 +296,7 @@ function CypressXrayJunitReporter(runner, options) {
       wsNum = 0
       testOrderedByUUID = []
       skippedTestcase = []
+      missingJiraKey = new Set()
       if (fs.existsSync(this._options.mochaFile)) {
         debug("removing report file", this._options.mochaFile)
         fs.unlinkSync(this._options.mochaFile)
@@ -304,10 +306,7 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._onSuiteBegin = function (suite) {
     if (!isInvalidSuite(suite)) {
-      const uuidSuite = uuidv4()
-      suite.uuid = uuidSuite
-      testOrderedByUUID.push(uuidSuite)
-      testsuites.push(this.getTestsuiteData(suite))
+      registerSuite(suite)
     }
   }
 
@@ -321,7 +320,7 @@ function CypressXrayJunitReporter(runner, options) {
 
   this._onSuiteEnd = function (suite) {
     if (!isInvalidSuite(suite) && suite.tests.length !== 0) {
-      const testsuite = findSuite(suite.title, testOrderedByUUID.indexOf(suite.uuid))
+      const testsuite = findSuite(suite)
       if (testsuite) {
         const start = testsuite[0]._attr.timestamp
         testsuite[0]._attr.time = this._Date.now() - start
@@ -339,9 +338,8 @@ function CypressXrayJunitReporter(runner, options) {
   this._runner.on(
     "end",
     function () {
-      const rootSuite = mapSuites(this.runner.suite, testTotals)
       logMessages.startingPlugin(xrayMode)
-      processSuites(rootSuite.suites)
+      processSuites(this.runner.suite.suites)
       logMessages.endPlugin()
       this.flush(testsuites)
     }.bind(this)
@@ -356,7 +354,7 @@ function CypressXrayJunitReporter(runner, options) {
  */
 CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   const _attr = {
-    name: this._generateSuiteTitle(suite),
+    name: this.removeInvalidCharacters(this._generateSuiteTitle(suite)),
     timestamp: this._Date.now(),
     tests: suite.tests.length,
   }
@@ -382,43 +380,35 @@ CypressXrayJunitReporter.prototype.getTestsuiteData = function (suite) {
   return testsuite
 }
 
-let missingJiraKey = []
+function exitOnMissingJiraKeys(tests) {
+  exitWithError(
+    [
+      "",
+      `   JIRA keys are required but missing in ${tests.length} test case(s):`,
+      ...tests.map((test) => `     - ${stripAnsi(test.fullTitle())}`),
+      MISSING_JIRA_KEYS_HINT,
+    ],
+    EXIT_CODES.MISSING_JIRA_KEYS
+  )
+}
+
+const MISSING_JIRA_KEYS_HINT = `   Set requiredJiraKey: false in reporter options to disable this check. Exiting with code ${EXIT_CODES.MISSING_JIRA_KEYS}...`
+
+// process.exit() can drop pending asynchronous console writes (e.g. pipes on Windows), and Cypress
+// does not relay the stderr of its server process: write to stdout synchronously before exiting.
+function exitWithError(lines, exitCode) {
+  const text = lines.join("\n") + "\n"
+  try {
+    fs.writeSync(1, text)
+  } catch (e) {
+    console.error(text)
+  }
+  process.exit(exitCode)
+}
 
 function addPropertyJiraKey(jiraKey, properties) {
   properties.push({
-    property: { _attr: { name: "test_key", value: jiraKey } },
-  })
-}
-
-function parseJiraKeyFromConfig(test) {
-  const testConfig = test._testConfig
-  if (!testConfig) {
-    return []
-  }
-  const jiraKey = testConfig["jiraKey"] ? testConfig.jiraKey : testConfig.unverifiedTestConfig?.jiraKey
-  if (!jiraKey) {
-    return []
-  }
-  return jiraKey
-}
-
-function addPropertyScreenshot(screenshot, properties) {
-  const fileName = screenshot.name
-  const base64 = screenshot.base64
-  properties.push({
-    property: [
-      {
-        _attr: { name: "testrun_evidence" },
-      },
-      {
-        item: [
-          {
-            _attr: { name: fileName },
-          },
-          base64,
-        ],
-      },
-    ],
+    property: { _attr: { name: "test_key", value: String(jiraKey).replace(INVALID_CHARACTERS_REGEX, "") } },
   })
 }
 
@@ -463,7 +453,8 @@ function addPropertyMessage(message, properties) {
     properties.push({
       property: {
         _attr: { name: "testrun_comment" },
-        _cdata: "{color:#ff0000}" + message + "{color}",
+        // The comment is rendered as Jira wiki markup: escape it so the message cannot inject links, images or macros
+        _cdata: "{color:#ff0000}" + escapeJiraMarkup(message) + "{color}",
       },
     })
   }
@@ -475,16 +466,52 @@ function createFailureObject(filePath) {
   return { name, base64 }
 }
 
+// A single folder name: no separators and no drive letters.
+// ".." is allowed (specs outside the project root): every candidate path is checked with isInsideFolder
+function isSafePathSegment(segment) {
+  return typeof segment === "string" && segment !== "" && !/[\\/:\0]/.test(segment)
+}
+
+// A file name: like a folder name, but "." and ".." are not allowed
+function isSafeFileName(name) {
+  return isSafePathSegment(name) && name !== "." && name !== ".."
+}
+
+// The resolved path must stay inside the screenshots folder
+function isInsideFolder(folder, filePath) {
+  const relative = path.relative(path.resolve(folder), path.resolve(filePath))
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative)
+}
+
+// The screenshot location comes from the browser (support file): only read .png files inside the screenshots folder
+function isSafeScreenshotLocation(screenshotsFolder, relativeFoldersArray, screenshotName) {
+  return (
+    typeof screenshotsFolder === "string" &&
+    path.isAbsolute(screenshotsFolder) &&
+    Array.isArray(relativeFoldersArray) &&
+    relativeFoldersArray.every(isSafePathSegment) &&
+    isSafeFileName(screenshotName) &&
+    screenshotName.toLowerCase().endsWith(".png")
+  )
+}
+
 function getFailureObject(screenshot, screenshotName, state) {
   if (screenshot?.relativeFoldersArray && screenshot?.screenshotsFolder && screenshot?.screenshotName && state !== "passed") {
     const { relativeFoldersArray, screenshotsFolder } = screenshot
+    if (!isSafeScreenshotLocation(screenshotsFolder, relativeFoldersArray, screenshotName)) {
+      logMessages.warning(false, 0, `Ignoring screenshot with an unexpected path: ${screenshotName}`)
+      return
+    }
     for (let i = 0; i < relativeFoldersArray.length; i++) {
       const pathParts = [screenshotsFolder, ...relativeFoldersArray.slice(i), screenshotName]
       const screenshotPath = path.join(...pathParts)
+      if (!isInsideFolder(screenshotsFolder, screenshotPath)) {
+        continue
+      }
       try {
         return createFailureObject(screenshotPath)
       } catch (error) {
-        if (error.message.includes("no such file or directory")) {
+        if (error.code === "ENOENT") {
           continue
         } else {
           throw error
@@ -511,8 +538,8 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
   const attachScreenshot = this._options.attachScreenshot
   const jenkinsMode = this._options.jenkinsMode
   const flipClassAndName = this._options.testcaseSwitchClassnameAndName
-  const name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle())
-  const classname = stripAnsi(test.title)
+  const name = this.removeInvalidCharacters(stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle()))
+  const classname = this.removeInvalidCharacters(stripAnsi(test.title))
   const testcase = {
     testcase: [
       {
@@ -532,11 +559,11 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     systemOutLines = systemOutLines.concat(test.consoleOutputs)
   }
   if (systemOutLines.length > 0) {
-    testcase.testcase.push({ "system-out": this.removeInvalidCharacters(stripAnsi(systemOutLines.join("\n"))) })
+    testcase.testcase.push({ "system-out": this.cleanText(stripAnsi(systemOutLines.join("\n"))) })
   }
 
   if (this._options.outputs && test.consoleErrors && test.consoleErrors.length > 0) {
-    testcase.testcase.push({ "system-err": this.removeInvalidCharacters(stripAnsi(test.consoleErrors.join("\n"))) })
+    testcase.testcase.push({ "system-err": this.cleanText(stripAnsi(test.consoleErrors.join("\n"))) })
   }
 
   if (err) {
@@ -557,10 +584,10 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     }
     const failureElement = {
       _attr: {
-        message: this.removeInvalidCharacters(message) || "",
-        type: err.name || "",
+        message: this.cleanText(message) || "",
+        type: this.removeInvalidCharacters(err.name) || "",
       },
-      _cdata: this.removeInvalidCharacters(failureMessage),
+      _cdata: this.cleanText(failureMessage),
     }
     testcase.testcase.push({ failure: failureElement })
   }
@@ -572,7 +599,7 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     if (jiraKey.length) {
       addPropertyJiraKey(jiraKey, properties)
     } else {
-      missingJiraKey.push(test.title)
+      missingJiraKey.add(test)
     }
   }
 
@@ -615,7 +642,17 @@ CypressXrayJunitReporter.prototype.removeInvalidCharacters = function (input) {
   if (!input) {
     return input
   }
-  return input.replace(INVALID_CHARACTERS_REGEX, "")
+  return String(input).replace(INVALID_CHARACTERS_REGEX, "")
+}
+
+/**
+ * Text coming from the tests (error messages, stack traces, console output): secrets are redacted
+ * (see the redactSecrets / redactPatterns options) and invalid XML characters removed.
+ * @param {string} input
+ * @returns {string}
+ */
+CypressXrayJunitReporter.prototype.cleanText = function (input) {
+  return this.removeInvalidCharacters(this._redact(input))
 }
 
 /**
@@ -626,9 +663,7 @@ CypressXrayJunitReporter.prototype.flush = function (testsuites) {
   try {
     this._xml = this.getXml(testsuites)
   } catch (exc) {
-    console.error("XML generation error: Failed to generate XML content")
-    console.error(`Details: ${exc.message}`)
-    process.exit(EXIT_CODES.XML_GENERATION_ERROR)
+    exitWithError(["XML generation error: Failed to generate XML content", `Details: ${exc.message}`], EXIT_CODES.XML_GENERATION_ERROR)
   }
 
   const reportFilename = this.formatReportFilename(this._xml, testsuites)
@@ -650,7 +685,8 @@ CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsui
   let reportFilename = this._options.mochaFile
 
   if (reportFilename.indexOf("[hash]") !== -1) {
-    reportFilename = reportFilename.replace("[hash]", md5(xml))
+    // md5 only makes the file name unique, it is not used for security
+    reportFilename = reportFilename.replace("[hash]", crypto.createHash("md5").update(xml).digest("hex"))
   }
   if (reportFilename.indexOf("[testsuitesTitle]") !== -1) {
     reportFilename = reportFilename.replace("[testsuitesTitle]", sanitize(this._options.testsuitesTitle))
@@ -686,37 +722,34 @@ CypressXrayJunitReporter.prototype.formatReportFilename = function (xml, testsui
  */
 CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
   let totalTests = 0
+  let totalFailures = 0
   const stats = this._runner.stats
-  const hasProperties = !!this._options.properties
   const startTime = this._Date
 
   testsuites.forEach(function (suite) {
     const _suiteAttr = suite.testsuite[0]._attr
     // testsuite is an array: [attrs, properties?, testcase, testcase, …]
-    // we want to make sure that we are grabbing test cases at the correct index
-    const _casesIndex = hasProperties ? 2 : 1
-    const _cases = suite.testsuite.slice(_casesIndex)
+    const _cases = suite.testsuite.filter((item) => "testcase" in item)
 
     // suiteTime has unrounded time as a Number of milliseconds
     const suiteTime = _suiteAttr.time
     _suiteAttr.time = (suiteTime / 1000 || 0).toFixed(3)
     _suiteAttr.timestamp = new startTime(_suiteAttr.timestamp).toISOString().slice(0, -5)
     _suiteAttr.failures = 0
-    _suiteAttr.skipped = 0
 
     _cases.forEach(function (testcase) {
-      _suiteAttr.skipped += countTest("skipped", testcase.testcase)
       _suiteAttr.failures += countTest("failure", testcase.testcase)
       if (typeof testcase.testcase[0]._attr.time === "number") {
         testcase.testcase[0]._attr.time = testcase.testcase[0]._attr.time.toFixed(3)
       }
     })
 
-    if (!_suiteAttr.skipped) {
-      delete _suiteAttr.skipped
-    }
+    // Count only the testcases actually written to the report:
+    // skipped/pending tests and tests without a jira key are excluded from it
+    _suiteAttr.tests = _cases.length
 
     totalTests += _suiteAttr.tests
+    totalFailures += _suiteAttr.failures
   })
 
   const rootSuite = {
@@ -724,9 +757,10 @@ CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
       name: this._options.testsuitesTitle,
       time: (stats.duration / 1000 || 0).toFixed(3),
       tests: totalTests,
-      failures: stats.failures,
+      failures: totalFailures,
     },
   }
+  // skipped/pending tests are not written as testcases: report how many there were
   if (stats.pending) {
     rootSuite._attr.skipped = stats.pending
   }
@@ -743,14 +777,12 @@ CypressXrayJunitReporter.prototype.getXml = function (testsuites) {
 CypressXrayJunitReporter.prototype.writeXmlToDisk = function (xml, filePath) {
   if (filePath) {
     debug("writing file to", filePath)
-    mkdirp.sync(path.dirname(filePath))
+    fs.mkdirSync(path.dirname(filePath), { recursive: true })
 
     try {
       fs.writeFileSync(filePath, xml, "utf-8")
     } catch (exc) {
-      console.error(`XML generation error: Failed to write report to ${filePath}`)
-      console.error(`Details: ${exc.message}`)
-      process.exit(EXIT_CODES.XML_GENERATION_ERROR)
+      exitWithError([`XML generation error: Failed to write report to ${filePath}`, `Details: ${exc.message}`], EXIT_CODES.XML_GENERATION_ERROR)
     }
     debug("results written successfully")
   }

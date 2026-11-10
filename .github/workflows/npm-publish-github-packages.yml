@@ -1,5 +1,7 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages on every push
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+# Runs the tests on every push to main and on pull requests.
+# Publishes to npm (trusted publishing / OIDC, no token) only when a version tag "vX.Y.Z" is pushed:
+#   npm version patch && git push --follow-tags
+# For more information see: https://docs.npmjs.com/trusted-publishers
 
 name: Node.js Package
 
@@ -7,42 +9,62 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
+  pull_request:
+
+# Least privilege by default: jobs only get read access to the repository
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # actions pinned to a full commit SHA (tags can be moved), the comment shows the version
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - run: npm ci
-      - run: sh test/test.sh ci
-      - run: sh test/test.sh test
-      - run: sh test/test.sh "run moreTests"
-      - run: sh test/test.sh "run requiredJiraKey"
-  publish-gpr:
+      # no dependency of the reporter needs install scripts
+      - run: npm ci --ignore-scripts
+      # the test project needs install scripts to download the Cypress binary
+      - run: sh test/test.sh ci 0
+      - run: sh test/test.sh test 16
+      - run: sh test/test.sh "run moreTests" 16
+      - run: sh test/test.sh "run requiredJiraKey" 104
+
+  publish-npm:
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     name: Publish to npm
     runs-on: ubuntu-latest
+    # Protect this environment in Settings > Environments (required reviewers, tag rule "v*")
+    environment: npm-publish
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
+      id-token: write # OIDC token for npm trusted publishing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - run: npm ci
-
-      - name: Publish package
-        id: publish
+      - name: Check that the tag matches the package version
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          npm publish
-          echo "success=true" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "Tag $TAG does not match package.json version $VERSION"
+            exit 1
+          fi
+
+      # nothing to build: publish without installing dependencies
+      - name: Publish package
+        run: npm publish

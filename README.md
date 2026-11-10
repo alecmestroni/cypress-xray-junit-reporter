@@ -213,6 +213,17 @@ You can also configure the `testsuites.name` attribute by setting `reporterOptio
 | `jenkinsClassnamePrefix`         | `undefined`     | Adds a prefix to a classname when running in `jenkinsMode`.                                                                                  |
 | `suiteTitleSeparatedBy`          | ` ` (space)     | Specifies the character used to separate nested suite titles (defaults to ' ', '.' in Jenkins mode).                                         |
 | `requiredJiraKey`                | `false`         | When enabled, enforces that all test cases must have a JIRA key. Tests without JIRA keys will cause the process to exit with error code 104. |
+| `redactSecrets`                  | `true`          | Replaces secrets (auth headers, cookies, tokens, passwords, JWTs, URL credentials) with `[REDACTED]` in the report. See [Security](#security). |
+| `redactPatterns`                 | `[]`            | Additional regular expressions (strings, `RegExp` or `{ pattern, flags }`) whose matches are replaced with `[REDACTED]` in the report. An invalid pattern stops the reporter with an error. |
+
+## Security
+
+The report contains error messages, stack traces, screenshots and (with `outputs`) console output. It is stored as a CI artifact and, with Xray, it is visible to everyone who can read the Jira project.
+
+- **Secret redaction**: error messages, stack traces and console output are redacted before being written. This matters because a failing `cy.request()` prints the request it sent, including headers such as `Authorization` and the body. The built-in patterns cover `Authorization`, `Cookie`, `Set-Cookie`, API keys, tokens, secrets and passwords (as `key: value`, `key=value` or JSON), `Bearer`/`Basic` credentials, JWTs and `user:password@` in URLs. Add project-specific patterns with `redactPatterns`, for example `redactPatterns: ["INT-[0-9]{6}", { pattern: "customer-[0-9]+", flags: "i" }]`. Redaction is best effort: avoid logging secrets in the first place.
+- **Screenshots** are attached as they are: anything visible on the page at failure time ends up in Xray. Only `.png` files inside the screenshots folder are read.
+- **Xray comments** are rendered as Jira wiki markup: the error message is escaped so it cannot inject links, images or macros.
+- `toConsole: true` prints the whole report, screenshots included, in the CI log.
 
 ## Error Codes
 
@@ -227,12 +238,25 @@ The reporter uses specific exit codes to indicate different types of errors:
 
 ### Using requiredJiraKey
 
-When `requiredJiraKey` is set to `true`, the reporter will:
+When `requiredJiraKey` is set to `true` (and `xrayMode` is not disabled), the run fails fast:
 
-- Check that all test cases have a valid JIRA key
-- Log warnings for tests missing JIRA keys
-- Display a clear error message showing how many test cases are missing JIRA keys
-- Exit with code 104 if any JIRA keys are missing in the current test suite
+- Before any test of a spec runs, every test of that spec is checked for a JIRA key (skipped/pending tests are ignored)
+- If some are missing, no test of the spec is executed: the missing test cases are listed and Cypress exits with code `104`, without running the remaining specs and without writing a report for that spec
+- The check runs in the support file, so `import "cypress-xray-junit-reporter/support"` is required (see 2.2). Without it, the spec runs first and the reporter exits with `104` afterwards
+- The check is not applied in interactive mode (`cypress open`)
+- Tests inside `describe.skip` / `it.skip` are ignored by the check
+- With cypress-multi-reporters `reporterOptions.configFile`, the plugin (see 2.1) reads `requiredJiraKey` from the JSON file and passes it to the support file, so the plugin must be registered in `setupNodeEvents` and `config` returned
+
+```
+  Running:  myFirstTest.cy.js                                                               (1 of 1)
+
+  1) "before all" hook for "testCase 0.1"
+
+   JIRA keys are required but missing in 2 test case(s):
+     - testSuite 0 testSuite 2 testCase 2.1
+     - testSuite 0 testSuite 2 testCase 2.2
+   Set requiredJiraKey: false in reporter options to disable this check. Exiting with code 104...
+```
 
 ## Logged Results
 
