@@ -75,6 +75,10 @@ In addition to `[hash]`, these can also be used:
 | `[suiteName]`       | will be replaced by the name the first test suite                                        |
 | `[hash]`            | will be replaced by MD5 hash of test results XML.                                        |
 
+**Prefer `[suiteFilename]`**: one report is written per spec, and the spec file name is normally unique, while `[suiteName]` depends on the title of the first `describe`/`context`, which two specs can easily share.
+
+If two specs of the same run still resolve to the same file name (same first suite title with `[suiteName]`, same file name in different folders with `[suiteFilename]`, or no placeholder at all), the second report is **not** written over the first one: it is saved with a numeric suffix (`login.xml`, `login-2.xml`, ...) and a warning naming both specs is logged. The suffix depends on the order the specs run in, so treat the warning as a prompt to rename the spec or the suite.
+
 ### 2. Cypress configuration
 
 #### 2.1 Inside `cypress.config.js`
@@ -88,7 +92,7 @@ module.exports = defineConfig({
   betterRetries: true,
   reporter: "cypress-xray-junit-reporter",
   reporterOptions: {
-    mochaFile: "./report/[suiteName].xml",
+    mochaFile: "./report/[suiteFilename].xml",
     useFullSuiteTitle: false,
     jenkinsMode: true,
     xrayMode: true, // if JiraKey are set correctly inside the test the XML report will contain the JiraKey value

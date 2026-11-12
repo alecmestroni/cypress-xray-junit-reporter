@@ -40,6 +40,61 @@ let skippedTestcase = []
 // Test objects (not titles, which may be duplicated across suites) that have no jira key
 let missingJiraKey = new Set()
 
+// Report files written during this run (resolved path -> spec that produced it). Cypress loads the
+// reporter once and creates one instance per spec, so this outlives the single spec and lets us
+// notice when two specs resolve to the same file name instead of silently overwriting the first.
+const writtenReports = new Map()
+const UNKNOWN_SPEC = "<unknown spec>"
+
+function reportKey(filePath) {
+  const resolved = path.resolve(filePath)
+  // case-insensitive file systems: Report.xml and report.xml are the same file
+  return process.platform === "win32" || process.platform === "darwin" ? resolved.toLowerCase() : resolved
+}
+
+// Path of the spec being reported: Cypress sets it on the root suite, plain mocha on its children
+function findSpecFile(suite) {
+  if (!suite) {
+    return undefined
+  }
+  if (suite.file) {
+    return suite.file
+  }
+  for (const child of suite.suites || []) {
+    const file = findSpecFile(child)
+    if (file) {
+      return file
+    }
+  }
+  return undefined
+}
+
+/**
+ * Returns the path the report of `spec` must be written to: `filePath` itself, unless another spec
+ * of this run already wrote there, in which case a numeric suffix is added (report.xml -> report-2.xml).
+ * The same spec run again (cypress open) keeps overwriting its own file.
+ */
+function claimReportPath(filePath, spec) {
+  const owner = writtenReports.get(reportKey(filePath))
+  if (owner === undefined || owner === spec) {
+    writtenReports.set(reportKey(filePath), spec)
+    return filePath
+  }
+
+  const { dir, name, ext } = path.parse(filePath)
+  let candidate
+  let candidateOwner
+  let counter = 2
+  do {
+    candidate = path.join(dir, `${name}-${counter++}${ext}`)
+    candidateOwner = writtenReports.get(reportKey(candidate))
+  } while (candidateOwner !== undefined && candidateOwner !== spec)
+
+  writtenReports.set(reportKey(candidate), spec)
+  logMessages.reportNameCollision(filePath, owner, spec, candidate)
+  return candidate
+}
+
 function findReporterOptions(options) {
   debug("Checking for options in", options)
   if (!options) {
@@ -686,7 +741,10 @@ CypressXrayJunitReporter.prototype.flush = function (testsuites) {
     exitWithError(["XML generation error: Failed to generate XML content", `Details: ${exc.message}`], EXIT_CODES.XML_GENERATION_ERROR)
   }
 
-  const reportFilename = this.formatReportFilename(this._xml, testsuites)
+  // Two specs can resolve to the same name (same first suite title with [suiteName], same file name
+  // in different folders with [suiteFilename], no placeholder at all): never overwrite the other one
+  const spec = findSpecFile(this._runner.suite) || UNKNOWN_SPEC
+  const reportFilename = claimReportPath(this.formatReportFilename(this._xml, testsuites), spec)
 
   this.writeXmlToDisk(this._xml, reportFilename)
 

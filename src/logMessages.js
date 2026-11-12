@@ -26,6 +26,14 @@ const logMessages = {
             console.log(`${whitespace.repeat(tabNum)}${chalk.black('⚠️  ' + message)}`);
         }
     },
+    reportNameCollision: (filePath, firstSpec, secondSpec, newFilePath) => {
+        const ws = whitespace.repeat(tabNum)
+        console.log(chalk.yellow([
+            `${ws}⚠️  Report name collision: "${filePath}" was already written by ${firstSpec}`,
+            `${ws}   The report of ${secondSpec} is saved as "${newFilePath}" so that no result is lost.`,
+            `${ws}   Use a mochaFile placeholder that is unique per spec, or give the specs different names/suite titles.\n`,
+        ].join('\n')));
+    },
     missingError: (shortenLogMode, suitesNum,) => {
         const message = '‼ Missing jira key in at least one testcase'
         if (!shortenLogMode) {
