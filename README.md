@@ -215,13 +215,14 @@ You can also configure the `testsuites.name` attribute by setting `reporterOptio
 | `requiredJiraKey`                | `false`         | When enabled, enforces that all test cases must have a JIRA key. Tests without JIRA keys will cause the process to exit with error code 104. |
 | `redactSecrets`                  | `true`          | Replaces secrets (auth headers, cookies, tokens, passwords, JWTs, URL credentials) with `[REDACTED]` in the report. See [Security](#security). |
 | `redactPatterns`                 | `[]`            | Additional regular expressions (strings, `RegExp` or `{ pattern, flags }`) whose matches are replaced with `[REDACTED]` in the report. An invalid pattern stops the reporter with an error. |
+| `screenshotsFolder`              | `undefined`     | Screenshots folder used to attach screenshots (absolute, or relative to the working directory). When set, the folder reported by the browser is ignored. Recommended with `attachScreenshot`. See [Security](#security). |
 
 ## Security
 
 The report contains error messages, stack traces, screenshots and (with `outputs`) console output. It is stored as a CI artifact and, with Xray, it is visible to everyone who can read the Jira project.
 
 - **Secret redaction**: error messages, stack traces and console output are redacted before being written. This matters because a failing `cy.request()` prints the request it sent, including headers such as `Authorization` and the body. The built-in patterns cover `Authorization`, `Cookie`, `Set-Cookie`, API keys, tokens, secrets and passwords (as `key: value`, `key=value` or JSON), `Bearer`/`Basic` credentials, JWTs and `user:password@` in URLs. Add project-specific patterns with `redactPatterns`, for example `redactPatterns: ["INT-[0-9]{6}", { pattern: "customer-[0-9]+", flags: "i" }]`. Redaction is best effort: avoid logging secrets in the first place.
-- **Screenshots** are attached as they are: anything visible on the page at failure time ends up in Xray. Only `.png` files inside the screenshots folder are read.
+- **Screenshots** are attached as they are: anything visible on the page at failure time ends up in Xray. Only `.png` files inside the screenshots folder are read; symlinks are resolved first, so a link pointing outside the folder is ignored. The folder comes from the browser unless the `screenshotsFolder` reporter option is set: set it (e.g. `"screenshotsFolder": "cypress/screenshots"`) so that the reporter does not rely on a value sent by the browser.
 - **Xray comments** are rendered as Jira wiki markup: the error message is escaped so it cannot inject links, images or macros.
 - `toConsole: true` prints the whole report, screenshots included, in the CI log.
 

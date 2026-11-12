@@ -24,7 +24,7 @@ const ALLOWED_COLORS = new Set([
   "whiteBright",
 ])
 
-// Name of the Cypress env variable used to pass requiredJiraKey to the support file
+// Name of the exposed (Cypress >= 15.10) / env (older) variable used to pass requiredJiraKey to the support file
 const REQUIRED_JIRA_KEY_ENV = "cypressXrayJunitReporterRequiredJiraKey"
 
 // With cypress-multi-reporters `reporterOptions.configFile`, the reporter options live in a JSON file
@@ -54,8 +54,23 @@ function exposeRequiredJiraKey(config) {
     return
   }
   const xrayMode = options.xrayMode === undefined || isEnabled(options.xrayMode)
-  config.env = config.env || {}
-  config.env[REQUIRED_JIRA_KEY_ENV] = xrayMode && isEnabled(options.requiredJiraKey)
+  const value = xrayMode && isEnabled(options.requiredJiraKey)
+  const major = getCypressMajorVersion(config)
+  // Cypress >= 15.10 reads public values with Cypress.expose(); Cypress 16 removed Cypress.env()
+  if ((config.expose && typeof config.expose === "object") || major >= 16) {
+    config.expose = config.expose || {}
+    config.expose[REQUIRED_JIRA_KEY_ENV] = value
+  }
+  // Older Cypress versions: the support file falls back to Cypress.env()
+  if (major === undefined || major < 16) {
+    config.env = config.env || {}
+    config.env[REQUIRED_JIRA_KEY_ENV] = value
+  }
+}
+
+function getCypressMajorVersion(config) {
+  const major = parseInt(String(config.version || ""), 10)
+  return Number.isNaN(major) ? undefined : major
 }
 
 module.exports = (on, config) => {

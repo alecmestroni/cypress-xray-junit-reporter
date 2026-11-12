@@ -74,6 +74,8 @@ function configureDefaults(options) {
   config.toConsole = !!config.toConsole
   config.redactSecrets = getSetting(config.redactSecrets, true)
   config.redactPatterns = getSetting(config.redactPatterns, [])
+  // Optional trusted screenshots folder: when set, the folder sent by the browser is ignored
+  config.screenshotsFolder = config.screenshotsFolder ? path.resolve(String(config.screenshotsFolder)) : undefined
   config.rootSuiteTitle = config.rootSuiteTitle || "Root Suite"
   config.testsuitesTitle = config.testsuitesTitle || "Mocha Tests"
 
@@ -460,12 +462,6 @@ function addPropertyMessage(message, properties) {
   }
 }
 
-function createFailureObject(filePath) {
-  const base64 = getBase64(filePath)
-  const name = filePath.split(path.sep).pop()
-  return { name, base64 }
-}
-
 // A single folder name: no separators and no drive letters.
 // ".." is allowed (specs outside the project root): every candidate path is checked with isInsideFolder
 function isSafePathSegment(segment) {
@@ -495,27 +491,51 @@ function isSafeScreenshotLocation(screenshotsFolder, relativeFoldersArray, scree
   )
 }
 
-function getFailureObject(screenshot, screenshotName, state) {
+// Resolves symlinks: returns undefined when the path does not exist
+function realpathOrUndefined(filePath) {
+  try {
+    return fs.realpathSync(filePath)
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      return undefined
+    }
+    throw error
+  }
+}
+
+/**
+ * @param {Object} screenshot - screenshot location sent by the support file (browser)
+ * @param {string} screenshotName
+ * @param {string} state - test state
+ * @param {string} [trustedScreenshotsFolder] - absolute screenshots folder from the reporter options:
+ *   when set, it replaces the folder sent by the browser
+ */
+function getFailureObject(screenshot, screenshotName, state, trustedScreenshotsFolder) {
   if (screenshot?.relativeFoldersArray && screenshot?.screenshotsFolder && screenshot?.screenshotName && state !== "passed") {
-    const { relativeFoldersArray, screenshotsFolder } = screenshot
+    const { relativeFoldersArray } = screenshot
+    const screenshotsFolder = trustedScreenshotsFolder || screenshot.screenshotsFolder
     if (!isSafeScreenshotLocation(screenshotsFolder, relativeFoldersArray, screenshotName)) {
       logMessages.warning(false, 0, `Ignoring screenshot with an unexpected path: ${screenshotName}`)
       return
     }
-    for (let i = 0; i < relativeFoldersArray.length; i++) {
-      const pathParts = [screenshotsFolder, ...relativeFoldersArray.slice(i), screenshotName]
-      const screenshotPath = path.join(...pathParts)
-      if (!isInsideFolder(screenshotsFolder, screenshotPath)) {
-        continue
-      }
-      try {
-        return createFailureObject(screenshotPath)
-      } catch (error) {
-        if (error.code === "ENOENT") {
+    // Compare real paths: a symlink inside the screenshots folder must not point outside of it
+    const realScreenshotsFolder = realpathOrUndefined(screenshotsFolder)
+    if (realScreenshotsFolder) {
+      for (let i = 0; i < relativeFoldersArray.length; i++) {
+        const pathParts = [screenshotsFolder, ...relativeFoldersArray.slice(i), screenshotName]
+        const screenshotPath = path.join(...pathParts)
+        if (!isInsideFolder(screenshotsFolder, screenshotPath)) {
           continue
-        } else {
-          throw error
         }
+        const realScreenshotPath = realpathOrUndefined(screenshotPath)
+        if (!realScreenshotPath || !isInsideFolder(realScreenshotsFolder, realScreenshotPath)) {
+          continue
+        }
+        if (!fs.statSync(realScreenshotPath).isFile()) {
+          continue
+        }
+        // read the resolved path that was checked, not the original one
+        return { name: screenshotName, base64: getBase64(realScreenshotPath) }
       }
     }
     // No file was found
@@ -608,7 +628,7 @@ CypressXrayJunitReporter.prototype.getTestcaseData = function (test, err) {
     // Move the last screenshot to the front of the array so the thumbnail displays the last screen capture.
     for (let i = test.screenshot.screenshotArray.length - 1; i >= 0; i--) {
       const testName = test.screenshot.screenshotArray[i]
-      const failureObj = getFailureObject(test.screenshot, testName, test.state)
+      const failureObj = getFailureObject(test.screenshot, testName, test.state, this._options.screenshotsFolder)
       if (failureObj) failureObjects.push(failureObj)
     }
     if (failureObjects.length > 0) {

@@ -12,9 +12,18 @@ function getReporterOptions(Cypress) {
   return reporterOptions.cypressXrayJunitReporterReporterOptions || reporterOptions
 }
 
+// Public value set by the plugin: Cypress.expose() on Cypress >= 15.10 (Cypress.env() was removed in 16),
+// Cypress.env() on older versions
+function readPluginValue(Cypress, key) {
+  if (typeof Cypress.expose === "function") {
+    return Cypress.expose(key)
+  }
+  return typeof Cypress.env === "function" ? Cypress.env(key) : undefined
+}
+
 function isRequiredJiraKeyEnabled(Cypress) {
   // set by the plugin when the options come from a cypress-multi-reporters configFile
-  if (isEnabled(Cypress.env("cypressXrayJunitReporterRequiredJiraKey"))) {
+  if (isEnabled(readPluginValue(Cypress, "cypressXrayJunitReporterRequiredJiraKey"))) {
     return true
   }
   const options = getReporterOptions(Cypress)
