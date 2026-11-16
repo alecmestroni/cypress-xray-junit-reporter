@@ -1,5 +1,5 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages on every push
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+# Runs the tests on every push and pull request, and publishes the package to npm on every push to main.
+# Publishing uses npm trusted publishing (OIDC): no NPM_TOKEN secret is needed.
 
 name: Node.js Package
 
@@ -7,42 +7,66 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The Cypress version pinned in test/package-lock.json and the latest release
+        cypress: ['lockfile', 'latest']
+    name: test (cypress ${{ matrix.cypress }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Cypress 16 requires Node 22 or later
+          node-version: 22
       - run: npm ci
       - run: sh test/test.sh ci
+      - if: matrix.cypress != 'lockfile'
+        run: cd test && npm install --no-save cypress@${{ matrix.cypress }}
       - run: sh test/test.sh test
       - run: sh test/test.sh "run moreTests"
       - run: sh test/test.sh "run requiredJiraKey"
   publish-gpr:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Required by npm trusted publishing (OIDC)
       id-token: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
+          # Trusted publishing requires Node >= 22.14.0 and npm >= 11.5.1
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - run: npm ci
 
-      - name: Publish package
-        id: publish
+      - name: Skip the publish when this version is already on npm
+        id: check
         run: |
-          npm publish
-          echo "success=true" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published, skipping"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A failed publish now fails the run instead of being silently ignored
+      - name: Publish package
+        if: steps.check.outputs.publish == 'true'
+        run: npm publish
